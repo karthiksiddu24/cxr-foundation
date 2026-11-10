@@ -1,0 +1,5 @@
+name: smoke_densenet
+model: {arch: densenet121, init: imagenet}
+data: {fraction: 0.01, batch_size: 64}
+schedule: {epochs: 3, eval_every_steps: 12, early_stop_patience: 100}
+tracking: none
