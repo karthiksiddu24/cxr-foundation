@@ -140,7 +140,7 @@ def rollout_maps(
             blk.attn.attn_drop.register_forward_hook(lambda _m, _i, o: attn_store.append(o))
         )
     m = model.to(dev)
-    maps = []
+    maps: list[np.ndarray] = []
     try:
         for i in range(0, len(items), 32):
             batch = items[i : i + 32]
@@ -158,7 +158,7 @@ def rollout_maps(
                 a = a / a.sum(dim=-1, keepdim=True)
                 joint = a @ joint
             npt = vit.num_prefix_tokens
-            g = round((n - npt) ** 0.5)
+            g = round(float(n - npt) ** 0.5)
             cls_to_patch = joint[:, 0, npt:].reshape(len(batch), g, g)
             maps.extend(cls_to_patch.float().cpu().numpy())
     finally:
@@ -240,8 +240,8 @@ def run(run_name: str, dataset: str, method: str) -> Path:
             "n": g.height,
             "pointing_game": float(hits.mean()),
             "pointing_game_ci": _boot_ci(hits),
-            "center_baseline": float(g["center_hit"].mean()),
-            "random_baseline": float(g["random_hit"].mean()),
+            "center_baseline": float(g["center_hit"].to_numpy().mean()),
+            "random_baseline": float(g["random_hit"].to_numpy().mean()),
             "mean_iou": float(ious.mean()),
             "mean_iou_ci": _boot_ci(ious),
         }
@@ -249,9 +249,9 @@ def run(run_name: str, dataset: str, method: str) -> Path:
     summary["overall"] = {
         "pointing_game": float(allh.mean()),
         "pointing_game_ci": _boot_ci(allh),
-        "center_baseline": float(df["center_hit"].mean()),
-        "random_baseline": float(df["random_hit"].mean()),
-        "mean_iou": float(df["iou"].mean()),
+        "center_baseline": float(df["center_hit"].to_numpy().mean()),
+        "random_baseline": float(df["random_hit"].to_numpy().mean()),
+        "mean_iou": float(df["iou"].to_numpy().mean()),
     }
     path = out_dir / f"localization_{dataset}_{method}.json"
     path.write_text(json.dumps(summary, indent=2))
