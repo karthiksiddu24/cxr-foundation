@@ -6,7 +6,10 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 stream_a() {
-  while pgrep -f "[l]aunch_baselines.sh" > /dev/null; do sleep 120; done
+  # launch_baselines.sh exec()s into run_queue.sh, so wait on either process name.
+  while pgrep -f "[l]aunch_baselines.sh|[r]un_queue.sh configs/queues/sup100" > /dev/null; do
+    sleep 120
+  done
   uv run python -m cxr_ml.eval.evaluate sup_densenet121_imagenet_224 sup_resnet50_imagenet_224 \
     sup_densenet121_random_224 sup_resnet50_random_224 sup_densenet121_imagenet_512 \
     > /data/cxr/logs/eval_baselines.log 2>&1
