@@ -81,6 +81,9 @@ CheXpert and VinDr-CXR require license agreements and are not downloaded automat
   Tailwind v4, Radix/shadcn-style components).
 - **Typed contract:** the web client's types are generated from the API's OpenAPI schema; CI fails
   if they drift.
+- **Verified explainability:** the in-graph heatmaps are tested to match MONAI's independent
+  Grad-CAM implementation (`monai.visualize.GradCAM`) on DenseNet-121 and ResNet, and to average
+  exactly to the model's logits for CNNs and ViTs.
 - **Reproducibility:** pinned dependencies, seeded everything, config + git commit + data split
   digest saved with every checkpoint, resumable training, ONNX/PyTorch numerical parity test.
 - **CI:** ruff, mypy (strict for server and shared code), pytest, ESLint, tsc, Vitest, Playwright

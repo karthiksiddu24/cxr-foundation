@@ -72,7 +72,10 @@ uv run scripts/export_openapi.py && (cd web && npm run gen:api)       # after AP
   model (GRAY_MEAN/STD), so it is inside the ONNX graph too.
 - **In-graph CAMs for CNNs and ViTs:** both end in avg-pool + linear (ViT uses `fc_norm=False`,
   i.e. norm *before* pooling), so `mean(cams) == logits` exactly. One forward pass gives scores,
-  14 heatmaps and the pooled embedding (for Mahalanobis OOD). Tested.
+  14 heatmaps and the pooled embedding (for Mahalanobis OOD). Tested, and cross-checked against
+  MONAI's GradCAM in `tests/test_cam_vs_monai_gradcam.py` (MONAI's default normalizer is
+  inverted: max -> 0). MONAI is used only for this verification; the training pipeline uses a
+  custom GPU-batched path for throughput.
 - **Bundle = contract** (`cxr_common.bundle.Manifest`): onnx + calibration temps + val-chosen
   thresholds + OOD stats + model card copied from eval metrics.json.
 - **Bootstrap:** patient-clustered, 2000 resamples, fixed seed shared by all runs (paired diffs
