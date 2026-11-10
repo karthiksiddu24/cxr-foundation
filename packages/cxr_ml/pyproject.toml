@@ -1,0 +1,29 @@
+[project]
+name = "cxr-ml"
+version = "0.1.0"
+description = "Data prep, training (supervised + MAE), evaluation, explainability, export"
+requires-python = ">=3.11"
+dependencies = [
+  "cxr-common",
+  "torch==2.15.0",
+  "torchvision==0.29.2",
+  "timm==1.0.31",
+  "monai==1.6.1",
+  "omegaconf==2.4.0",
+  "polars==2.1.0",
+  "pyarrow==26.0.1",
+  "scikit-learn==1.9.1",
+  "scipy",
+  "matplotlib==3.11.2",
+  "mlflow-skinny==3.18.0",
+  "wandb==0.31.0",
+  "onnx==1.23.2",
+  "onnxruntime==1.31.1",
+  "onnxscript",
+  "tqdm",
+  "pyyaml",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

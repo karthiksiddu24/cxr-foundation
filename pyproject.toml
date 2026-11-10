@@ -1,0 +1,61 @@
+[project]
+name = "cxr-foundation"
+version = "0.1.0"
+description = "Self-supervised chest X-ray foundation model, evaluation suite, and inference app"
+requires-python = ">=3.11,<3.12"
+dependencies = ["cxr-common", "cxr-ml", "cxr-server"]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+cxr-common = { workspace = true }
+cxr-ml = { workspace = true }
+cxr-server = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "ruff==0.17.4",
+  "mypy==2.4.1",
+  "pytest==9.2.0",
+  "pytest-asyncio==1.4.1.post1",
+  "pytest-cov==7.1.0",
+  "pre-commit==4.7.0",
+  "types-pyyaml",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "N", "PT", "NPY"]
+ignore = ["N812", "N806", "N803", "RUF001", "RUF002", "RUF003", "PT018", "PT011"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cxr_common", "cxr_ml", "cxr_server"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+ignore_missing_imports = true
+files = ["packages/cxr_common/src", "packages/cxr_server/src", "packages/cxr_ml/src"]
+
+[[tool.mypy.overrides]]
+module = ["cxr_common.*", "cxr_server.*"]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["packages/cxr_common/tests", "packages/cxr_ml/tests", "packages/cxr_server/tests", "tests"]
+addopts = "-ra --strict-markers --import-mode=importlib"
+markers = [
+  "gpu: needs a CUDA GPU",
+  "data: needs the real preprocessed datasets under CXR_DATA_ROOT",
+  "slow: slow test",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

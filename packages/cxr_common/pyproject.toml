@@ -1,0 +1,18 @@
+[project]
+name = "cxr-common"
+version = "0.1.0"
+description = "Shared preprocessing, label definitions, and model-bundle schema (no torch)"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2.2,<3",
+  "opencv-python-headless==5.0.0.93",
+  "pydicom==3.0.2",
+  "pylibjpeg==2.1.0",
+  "pylibjpeg-libjpeg==2.5.0",
+  "pylibjpeg-openjpeg==2.6.0",
+  "pydantic==2.14.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
