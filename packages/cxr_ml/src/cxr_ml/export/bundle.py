@@ -22,6 +22,7 @@ import torch
 from torch import nn
 
 from cxr_common.bundle import (
+    ExternalResult,
     Finding,
     Interval,
     Manifest,
@@ -201,8 +202,23 @@ def build_manifest(
             "UNTRAINED PLACEHOLDER: classification head is random. Scores are meaningless.",
             *CARD_TEXT["limitations"],
         ]
+    external: list[ExternalResult] = []
+    ext_path = DataPaths.from_env().eval_artifacts / run / "external_chexpert_test.json"
+    if metrics and ext_path.exists():
+        e = json.loads(ext_path.read_text())
+        external.append(
+            ExternalResult(
+                dataset="CheXpert (radiologist-labeled)",
+                split=e["split"],
+                n_images=e["n_images"],
+                mean_auroc=Interval(**e["mean_auroc_exact_mappings"]),
+                per_finding={k: Interval(**v["auroc"]) for k, v in e["per_finding"].items()},
+                notes="Mean over exactly-mapped findings; Lung Lesion maps approximately to Mass|Nodule.",
+            )
+        )
     card = ModelCard(
         **card_kwargs,
+        external=external,
         mean_test_auroc=_iv(metrics["test_auroc"]["mean"]) if metrics else None,
         mean_ece_raw=metrics["mean_ece_raw"] if metrics else None,
         mean_ece_calibrated=metrics["mean_ece_calibrated"] if metrics else None,
