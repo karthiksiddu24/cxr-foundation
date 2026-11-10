@@ -1,0 +1,5 @@
+# Phase 4 fine-tuning recipe, shared by every initialization of the same ViT-Base backbone.
+model: {arch: vit_base_patch16_224, drop_path_rate: 0.1}
+data: {size: 224, batch_size: 128}
+optim: {weight_decay: 0.05, warmup_frac: 0.05, grad_clip: 3.0}
+pos_weight: sqrt

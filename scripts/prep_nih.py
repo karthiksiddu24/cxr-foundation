@@ -30,8 +30,9 @@ from cxr_ml.paths import DataPaths
 FRACTIONS = (0.01, 0.1)
 
 
-def frac_col(f: float) -> str:
-    return f"in_frac_{f:g}".replace(".", "p")
+def frac_col(f: float, subset_seed: int = 0) -> str:
+    base = f"in_frac_{f:g}".replace(".", "p")
+    return base if subset_seed == 0 else f"{base}_s{subset_seed}"
 
 
 def main() -> None:
@@ -41,6 +42,13 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--index-only", action="store_true")
+    ap.add_argument(
+        "--subset-seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2],
+        help="independent nested label-fraction draws (one per fine-tuning seed)",
+    )
     args = ap.parse_args()
 
     paths = DataPaths.from_env()
@@ -51,12 +59,21 @@ def main() -> None:
     df = build_index(raw)
     df = assign_splits(df, val_frac=args.val_frac, seed=args.seed)
     patients = check_no_patient_leakage(df)
-    subsets = label_fraction_subsets(df, FRACTIONS, seed=args.seed)
+    all_subsets = {
+        ss: label_fraction_subsets(df, FRACTIONS, seed=args.seed + ss) for ss in args.subset_seeds
+    }
+    subsets = all_subsets[args.subset_seeds[0]]
     df = df.with_columns(
-        [pl.col("image_id").is_in(list(s)).alias(frac_col(f)) for f, s in subsets.items()]
+        [
+            pl.col("image_id").is_in(list(s)).alias(frac_col(f, ss))
+            for ss, subs in all_subsets.items()
+            for f, s in subs.items()
+        ]
     )
     df = df.with_row_index("row")
-    df.write_parquet(out / "index.parquet")
+    tmp = out / "index.parquet.tmp"
+    df.write_parquet(tmp)
+    tmp.replace(out / "index.parquet")  # atomic: running jobs never see a partial file
 
     counts = {s: df.filter(pl.col("split") == s).height for s in ("train", "val", "test")}
     meta = {
@@ -71,6 +88,10 @@ def main() -> None:
                 "patients": df.filter(pl.col(frac_col(f)))["patient_id"].n_unique(),
             }
             for f, s in subsets.items()
+        },
+        "subset_seeds": args.subset_seeds,
+        "subset_sizes": {
+            f"{f:g}_s{ss}": len(s) for ss, subs in all_subsets.items() for f, s in subs.items()
         },
         "split_digest": frame_digest(df, ["image_id", "split"]),
         "index_digest": frame_digest(df, ["image_id", "findings", "patient_id"]),

@@ -48,6 +48,7 @@ class DataConfig:
     dataset: str = "nih"
     size: int = 224
     fraction: float = 1.0  # 1.0 | 0.1 | 0.01 (patient-level, precomputed nested subsets)
+    subset_seed: int = 0  # which independent draw of the label-fraction subset (0, 1, 2)
     batch_size: int = 128
     eval_batch_size: int = 256
     loader: str = "auto"  # auto | gpu | memmap
@@ -88,8 +89,9 @@ class TrainConfig:
     tags: dict[str, str] = field(default_factory=dict)
 
 
-def frac_col(f: float) -> str:
-    return f"in_frac_{f:g}".replace(".", "p")
+def frac_col(f: float, subset_seed: int = 0) -> str:
+    base = f"in_frac_{f:g}".replace(".", "p")
+    return base if subset_seed == 0 else f"{base}_s{subset_seed}"
 
 
 def load_config(argv: list[str]) -> TrainConfig:
@@ -181,7 +183,7 @@ def run(cfg: TrainConfig) -> Path:
     y_all = df.select(list(NIH_LABELS)).to_numpy().astype(np.uint8)
     train_mask = df["split"] == "train"
     if cfg.data.fraction < 1.0:
-        train_mask = train_mask & df[frac_col(cfg.data.fraction)]
+        train_mask = train_mask & df[frac_col(cfg.data.fraction, cfg.data.subset_seed)]
     rows_train = df.filter(train_mask)["row"].to_numpy()
     rows_val = df.filter(pl.col("split") == "val")["row"].to_numpy()
     rows_test = df.filter(pl.col("split") == "test")["row"].to_numpy()
@@ -350,14 +352,17 @@ def run(cfg: TrainConfig) -> Path:
         torch.load(run_dir / "best.pt", map_location="cpu", weights_only=False)["model"]
     )
     test_loader = make(rows_test, cfg.data.eval_batch_size, False)
-    tm = float("nan")
+    tm: float | None = None  # stays None for sweeps (eval_test=false)
     final_splits = [("val", val_loader)] + ([("test", test_loader)] if cfg.eval_test else [])
     for split, loader in final_splits:
         lg, rows = predict(fmodel, loader, s)
         save_preds(run_dir / f"preds_{split}.parquet", df, rows, lg)
         if split == "test":
             tm, _ = mean_auroc(lg, y_all[rows])
-    tracker.log({"best/val_mean_auroc": best, "best/step": best_step, "test/mean_auroc": tm}, step)
+    final = {"best/val_mean_auroc": best, "best/step": best_step}
+    if tm is not None:
+        final["test/mean_auroc"] = tm
+    tracker.log(final, step)
     tracker.close()
     summary = {
         "best_val_mean_auroc": best,

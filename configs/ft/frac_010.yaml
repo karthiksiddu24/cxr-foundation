@@ -1,0 +1,2 @@
+data: {fraction: 0.1}
+schedule: {epochs: 1, min_steps: 4000, eval_every_steps: 250, early_stop_patience: 6}
