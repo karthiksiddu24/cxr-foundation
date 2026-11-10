@@ -44,6 +44,8 @@ export function SiteHeader() {
               <Link
                 key={n.href}
                 href={n.href}
+                // /model is rendered per request from the API; don't hit the API on every page view.
+                prefetch={n.href === "/model" ? false : undefined}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "whitespace-nowrap rounded-md px-2 py-1.5 text-muted-foreground transition-colors hover:text-foreground sm:px-2.5",

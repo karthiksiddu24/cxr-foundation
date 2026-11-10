@@ -60,7 +60,11 @@ export function UploadScreen() {
           Upload a frontal chest radiograph to see calibrated scores for 14 findings and a heatmap
           of where the model found evidence. The model was pretrained without labels on chest
           X-rays, then fine-tuned on NIH ChestX-ray14.{" "}
-          <Link href="/model" className="text-primary underline underline-offset-4">
+          <Link
+            href="/model"
+            prefetch={false}
+            className="text-primary underline underline-offset-4"
+          >
             Read the model card
           </Link>
           .
