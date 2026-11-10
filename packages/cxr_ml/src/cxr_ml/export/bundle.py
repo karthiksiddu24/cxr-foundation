@@ -88,16 +88,21 @@ def check_parity(model: CXRClassifier, onnx_path: Path, x: np.ndarray) -> dict[s
 
 
 @torch.no_grad()
-def collect_features(model: CXRClassifier, rows: np.ndarray, size: int) -> np.ndarray:
+def collect_features(
+    model: CXRClassifier, rows: np.ndarray, size: int, batch: int = 32
+) -> np.ndarray:
+    """Pooled features for the given NIH rows. Small batches so export fits next to training jobs."""
     paths = DataPaths.from_env()
     n = pl.read_parquet(paths.index("nih"), columns=["row"]).height
     mm = np.memmap(paths.images("nih", size), dtype=np.uint8, mode="r", shape=(n, size, size))
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     m = model.to(dev).eval()
     feats = []
-    for i in range(0, len(rows), 256):
-        x = u8_to_float(torch.from_numpy(np.array(mm[np.sort(rows[i : i + 256])])).to(dev))
-        feats.append(m.forward_features(x).float().cpu().numpy())
+    rows = np.sort(rows)
+    with torch.inference_mode():
+        for i in range(0, len(rows), batch):
+            x = u8_to_float(torch.from_numpy(np.array(mm[rows[i : i + batch]])).to(dev))
+            feats.append(m.forward_features(x).float().cpu().numpy())
     m.cpu()
     return np.concatenate(feats).astype(np.float64)
 
