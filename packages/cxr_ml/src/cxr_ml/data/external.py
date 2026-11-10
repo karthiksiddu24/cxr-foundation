@@ -6,6 +6,14 @@ CheXpert ($CXR_CHEXPERT_RAW), radiologist-labeled sets only:
     valid.csv                + valid/patient*/study*/view*_frontal.jpg
     test_labels.csv (or test.csv) + test/patient*/study*/view*_frontal.jpg
   The 'Path' column may carry a 'CheXpert-v1.0/' or 'CheXpert-v1.0-small/' prefix; it is stripped.
+  Alternative when no label CSV is present (the CheXpert Plus release on Redivis ships the
+  validation images but not the radiologist labels):
+    $CXR_CHEXPERT_RAW/valid/patient*/study*/view*_frontal.png          (CheXpert Plus "PNG_valid")
+    $CXR_CHEXLOCALIZE_RAW/gt_segmentations_val.json                    (CheXlocalize)
+  CheXlocalize radiologists segmented every finding that is positive in the CheXpert ground truth,
+  so a finding is labeled positive iff its ground-truth mask is non-empty, and images absent from
+  the file are negative for all CheXlocalize findings. Pneumonia is not part of CheXlocalize and
+  is left unlabeled. Masks are also exported for heatmap localization.
 VinDr-CXR ($CXR_VINDR_RAW), test split:
     annotations/annotations_test.csv   (image_id, class_name, x_min, y_min, x_max, y_max)
     test/<image_id>.dicom
@@ -13,6 +21,7 @@ VinDr-CXR ($CXR_VINDR_RAW), test split:
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -24,9 +33,14 @@ import pydicom
 from cxr_common.dicom import dicom_to_uint8
 from cxr_common.labels import CHEXPERT_MAP
 from cxr_common.preprocess import letterbox, to_gray_uint8
+from cxr_ml.data.rle import rle_decode, rle_is_empty
 
 CHEXPERT_LABELS = [m.target for m in CHEXPERT_MAP]
 _PREFIX = re.compile(r"^CheXpert-v1\.0(-small)?/")
+_CHEXLOCALIZE_SPLIT = {"valid": "val", "test": "test"}
+# CheXlocalize finding names coincide with CheXpert's; Pneumonia was not segmented.
+CHEXLOCALIZE_FINDINGS = [n for n in CHEXPERT_LABELS if n != "Pneumonia"]
+_IMG_SUFFIXES = (".png", ".jpg", ".jpeg")
 
 
 def _first_existing(root: Path, names: list[str]) -> Path | None:
@@ -36,12 +50,16 @@ def _first_existing(root: Path, names: list[str]) -> Path | None:
     return None
 
 
-def chexpert_index(root: Path, split: str) -> pl.DataFrame:
+def chexpert_index(root: Path, split: str, chexlocalize_root: Path | None = None) -> pl.DataFrame:
     csv = _first_existing(
         root,
         ["valid.csv"] if split == "valid" else ["test_labels.csv", "test.csv", "groundtruth.csv"],
     )
     if csv is None:
+        if chexlocalize_root is not None:
+            seg = chexlocalize_root / f"gt_segmentations_{_CHEXLOCALIZE_SPLIT[split]}.json"
+            if seg.exists() and (root / split).is_dir():
+                return chexlocalize_index(root, split, seg)
         raise FileNotFoundError(f"CheXpert {split} labels not found under {root}")
     df = pl.read_csv(csv, infer_schema_length=0)
     path_col = next(c for c in df.columns if c.lower() in ("path", "image", "study"))
@@ -66,7 +84,81 @@ def chexpert_index(root: Path, split: str) -> pl.DataFrame:
             for c in CHEXPERT_LABELS
         ],
     )
-    return out.with_row_index("row")
+    return out.with_columns(pl.lit("chexpert_csv").alias("label_source")).with_row_index("row")
+
+
+def _image_key(rel: str) -> str:
+    """'valid/patient64541/study1/view1_frontal.png' -> 'patient64541_study1_view1_frontal'."""
+    p = Path(rel)
+    return f"{p.parts[-3]}_{p.parts[-2]}_{p.stem}"
+
+
+def load_chexlocalize(seg_path: Path) -> dict[str, dict[str, dict[str, object]]]:
+    data: dict[str, dict[str, dict[str, object]]] = json.loads(seg_path.read_text())
+    return data
+
+
+def chexlocalize_index(root: Path, split: str, seg_path: Path) -> pl.DataFrame:
+    """Frontal images under root/split labeled from CheXlocalize ground-truth masks."""
+    rels = sorted(
+        str(p.relative_to(root))
+        for p in (root / split).glob("patient*/study*/view*_frontal.*")
+        if p.suffix.lower() in _IMG_SUFFIXES
+    )
+    if not rels:
+        raise FileNotFoundError(f"no frontal images under {root / split}")
+    seg = load_chexlocalize(seg_path)
+    keys = [_image_key(r) for r in rels]
+    missing = sorted(k for k in seg if "frontal" in k and k not in set(keys))
+    if missing:
+        raise FileNotFoundError(f"{len(missing)} segmented images missing, e.g. {missing[:3]}")
+    cols: dict[str, list[float | None]] = {}
+    for name in CHEXPERT_LABELS:
+        if name not in CHEXLOCALIZE_FINDINGS:
+            cols[name] = [None] * len(keys)
+            continue
+        cols[name] = [
+            float(k in seg and name in seg[k] and not rle_is_empty(seg[k][name])) for k in keys
+        ]
+    df = pl.DataFrame(
+        {
+            "path": rels,
+            "patient_id": [int(re.search(r"patient(\d+)", r).group(1)) for r in rels],
+            **{k: pl.Series(v, dtype=pl.Float64) for k, v in cols.items()},
+            "label_source": ["chexlocalize_masks"] * len(rels),
+        }
+    )
+    return df.with_row_index("row")
+
+
+def write_masks(
+    idx: pl.DataFrame, geo: list[dict[str, float]], seg_path: Path, out: Path, sizes: list[int]
+) -> int:
+    """Letterbox each non-empty ground-truth mask with the image's own geometry."""
+    seg = load_chexlocalize(seg_path)
+    items: list[tuple[int, str, np.ndarray]] = []
+    for row, rel in zip(idx["row"].to_list(), idx["path"].to_list(), strict=True):
+        ann = seg.get(_image_key(rel), {})
+        g = geo[row]
+        for name in CHEXLOCALIZE_FINDINGS:
+            if name in ann and not rle_is_empty(ann[name]):
+                m = rle_decode(ann[name])
+                if m.shape != (int(g["orig_h"]), int(g["orig_w"])):
+                    raise ValueError(f"{rel} {name}: mask {m.shape} vs image {g}")
+                items.append((row, name, m))
+    for s in sizes:
+        mm = np.memmap(out / f"masks_{s}.u8", dtype=np.uint8, mode="w+", shape=(len(items), s, s))
+        for i, (_, _, m) in enumerate(items):
+            mm[i] = letterbox(m.astype(np.uint8) * 255, s)[0] >= 128
+        mm.flush()
+    pl.DataFrame(
+        {
+            "mask": list(range(len(items))),
+            "row": [r for r, _, _ in items],
+            "finding": [n for _, n, _ in items],
+        }
+    ).write_parquet(out / "masks.parquet")
+    return len(items)
 
 
 def write_images(
@@ -106,19 +198,30 @@ def write_images(
     return geo
 
 
-def prep_chexpert(root: Path, out_root: Path, sizes: list[int]) -> None:
+def prep_chexpert(
+    root: Path, out_root: Path, sizes: list[int], chexlocalize_root: Path | None = None
+) -> None:
     for split in ("valid", "test"):
         try:
-            idx = chexpert_index(root, split)
+            idx = chexpert_index(root, split, chexlocalize_root)
         except FileNotFoundError as e:
             print(f"skip: {e}")
             continue
         out = out_root / f"chexpert_{split}"
-        write_images([root / p for p in idx["path"]], out, sizes)
-        idx.write_parquet(out / "index.parquet")
-        print(
-            f"CheXpert {split}: {idx.height} frontal images, {idx['patient_id'].n_unique()} patients"
+        geo = write_images([root / p for p in idx["path"]], out, sizes)
+        idx = idx.with_columns(
+            *[
+                pl.Series(k, [g[k] for g in geo])
+                for k in ("orig_h", "orig_w", "scale", "pad_x", "pad_y")
+            ]
         )
+        idx.write_parquet(out / "index.parquet")
+        msg = f"CheXpert {split}: {idx.height} frontal images, {idx['patient_id'].n_unique()} patients"
+        if chexlocalize_root is not None:
+            seg = chexlocalize_root / f"gt_segmentations_{_CHEXLOCALIZE_SPLIT[split]}.json"
+            if seg.exists():
+                msg += f", {write_masks(idx, geo, seg, out, sizes)} ground-truth masks"
+        print(f"{msg} (labels: {idx['label_source'][0]})")
 
 
 def prep_vindr(root: Path, out_root: Path, sizes: list[int]) -> None:

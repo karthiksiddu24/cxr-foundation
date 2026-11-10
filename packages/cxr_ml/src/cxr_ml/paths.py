@@ -25,6 +25,10 @@ class DataPaths:
         return Path(os.environ.get("CXR_CHEXPERT_RAW", self.root / "raw" / "chexpert"))
 
     @property
+    def chexlocalize_raw(self) -> Path:
+        return Path(os.environ.get("CXR_CHEXLOCALIZE_RAW", self.root / "raw" / "chexlocalize"))
+
+    @property
     def vindr_raw(self) -> Path:
         return Path(os.environ.get("CXR_VINDR_RAW", self.root / "raw" / "vindr"))
 

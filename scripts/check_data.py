@@ -25,9 +25,19 @@ checks = [
         ["NIH-CX14_TubeAnnotations_NonExperts_aggregated.csv"],
     ),
     (
-        "CheXpert expert sets (manual, Stanford AIMI license)",
+        "CheXpert valid images (manual, Stanford AIMI; CheXpert Plus 'PNG_valid' on Redivis)",
         p.chexpert_raw,
-        ["valid.csv", "valid/", "test_labels.csv", "test/"],
+        ["valid/"],
+    ),
+    (
+        "CheXpert valid labels: either valid.csv in the CheXpert dir, or CheXlocalize masks",
+        p.chexlocalize_raw,
+        ["gt_segmentations_val.json"],
+    ),
+    (
+        "CheXpert test set (optional; images + labels CSV)",
+        p.chexpert_raw,
+        ["test/", "test_labels.csv"],
     ),
     (
         "VinDr-CXR test (manual, PhysioNet credentialed)",

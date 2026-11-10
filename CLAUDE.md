@@ -11,6 +11,12 @@ PLAN.md holds the original plan; this file is the source of truth for how things
 - **Patient level everywhere:** splits, label-fraction subsets, bootstrap CIs.
 - Do not download credentialed datasets (CheXpert, VinDr, MIMIC); scripts expect them under
   `$CXR_DATA_ROOT/raw/<name>`.
+- CheXpert valid images: `raw/chexpert/valid/` (CheXpert Plus PNG_valid). Labels: no CSV in
+  that release, so `cxr_ml.data.external` derives them from CheXlocalize ground-truth masks in
+  `raw/chexlocalize/gt_segmentations_val.json` (positive iff mask non-empty; Pneumonia
+  unlabeled). Positives on 202 frontal images: Atel 75, Cardio 66, Effusion 64, Edema 42,
+  Consol 32, PTX 7, Lung Lesion 1 (findings with < 5 positives are not scored). The same masks
+  drive `localization --dataset chexlocalize`. The test set is not available in that release.
 - Uploaded images never touch disk or logs (see `cxr_server/app.py`; enforced by tests).
 - Commit only on request; end commit messages with the Co-Authored-By line used in history.
 
@@ -45,6 +51,8 @@ uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml model.arch
 uv run python -m cxr_ml.train.mae --config configs/mae/vit_base.yaml [--benchmark]
 scripts/run_queue.sh configs/queues/<file>.txt /data/cxr/logs/<dir>   # sequential job queue
 uv run python -m cxr_ml.eval.evaluate <run> [<run> ...]               # metrics.json + figures
+uv run scripts/prep_external.py && uv run python -m cxr_ml.eval.external <run>   # CheXpert valid
+uv run python -m cxr_ml.explain.localization <run> --dataset chexlocalize        # vs. masks
 uv run python -m cxr_ml.export.bundle <run> --version 1.0.0           # ONNX bundle (+parity check)
 uv run python -m cxr_ml.export.bundle --placeholder                   # untrained dev bundle
 
@@ -98,4 +106,6 @@ uv run scripts/export_openapi.py && (cd web && npm run gen:api)       # after AP
   (done in `create_app`; `test_upload_never_touches_disk` guards it).
 - `uv run` re-syncs the full workspace (pulls torch); use `uv run --no-sync` in light envs.
 - The NIH HF mirror zips contain macOS `._*.png` files; the downloader skips them.
+- CheXlocalize masks are COCO RLE (column-major); `cxr_ml.data.rle` is a tested port, no pycocotools.
+  Its `gradcam_maps_val/*.pkl` files are pickles from the authors' model: not needed, never load them.
 - Concurrent GPU jobs (MAE + supervised) share throughput; MAE ETA in logs reflects that.

@@ -363,26 +363,37 @@ def main() -> None:
 
     # ---- Phase 5
     w("## 4. External validation (CheXpert)\n")
-    ext_runs = sorted({p.parent.name for p in EV.glob("*/external_chexpert_test.json")})
-    if ext_runs:
-        for run in ext_runs:
-            e = load(EV / run / "external_chexpert_test.json")
+    ext_files = sorted(EV.glob("*/external_chexpert_*.json"))
+    if ext_files:
+        for f in ext_files:
+            e = load(f)
             assert e is not None
-            w(
-                f"`{run}` on CheXpert test ({e['n_images']} frontal images, {e['n_patients']} patients): "
-                f"mean AUROC over exact-mapped findings {fmt(e['mean_auroc_exact_mappings'])}\n"
+            src = (
+                "labels derived from CheXlocalize radiologist segmentations (a finding is positive "
+                "iff radiologists segmented it)"
+                if e.get("label_source") == "chexlocalize_masks"
+                else "radiologist labels"
             )
             w(
-                "| CheXpert finding | NIH output(s) | CheXpert AUROC (95% CI) | NIH test AUROC | Drop |"
+                f"`{e['run']}` on CheXpert {e['split']} ({e['n_images']} frontal images, "
+                f"{e['n_patients']} patients; {src}): mean AUROC over exact-mapped findings "
+                f"{fmt(e['mean_auroc_exact_mappings'])}\n"
             )
-            w("|---|---|---:|---:|---:|")
+            w(
+                "| CheXpert finding | NIH output(s) | Positives | CheXpert AUROC (95% CI) | NIH test AUROC | Drop |"
+            )
+            w("|---|---|---:|---:|---:|---:|")
             for k, v in e["per_finding"].items():
                 approx = " (approx.)" if v["approximate"] else ""
+                outs = "/".join(v["nih_outputs"])
+                if v["auroc"] is None:
+                    w(
+                        f"| {k}{approx} | {outs} | {v['n_pos']} | not scored: {v['skipped']} | — | — |"
+                    )
+                    continue
                 nih = fmt(v.get("nih_test_auroc")) if v.get("nih_test_auroc") else "—"
                 drop = f"{v['drop']:+.3f}" if "drop" in v else "—"
-                w(
-                    f"| {k}{approx} | {'/'.join(v['nih_outputs'])} | {fmt(v['auroc'])} | {nih} | {drop} |"
-                )
+                w(f"| {k}{approx} | {outs} | {v['n_pos']} | {fmt(v['auroc'])} | {nih} | {drop} |")
             w("")
     else:
         w(
@@ -394,12 +405,13 @@ def main() -> None:
     loc_files = sorted(EV.glob("*/localization_*.json"))
     if loc_files:
         w(
-            "Pointing game: fraction of boxed findings where the heatmap's maximum falls inside a "
-            "radiologist box. A heatmap is only informative if it beats the image-center and "
-            "random-point baselines.\n"
+            "Pointing game: fraction of annotated findings where the heatmap's maximum falls inside "
+            "the radiologist's box (NIH, VinDr) or segmentation (CHEXLOCALIZE: CheXpert validation "
+            "images, an external hospital). A heatmap is only informative if it beats the "
+            "image-center and random-point baselines.\n"
         )
         w(
-            "| Run | Boxes | Heatmap | n | Pointing game (95% CI) | Center baseline | Random baseline | Mean IoU |"
+            "| Run | Reference | Heatmap | n | Pointing game (95% CI) | Center baseline | Random baseline | Mean IoU |"
         )
         w("|---|---|---|---:|---:|---:|---:|---:|")
         for f in loc_files:

@@ -1,11 +1,13 @@
 """External validation of an NIH-trained run on CheXpert's radiologist-labeled sets.
 
-    uv run python -m cxr_ml.eval.external <run> [--split test|valid]
+    uv run python -m cxr_ml.eval.external <run> [--split valid|test]
 
 Each CheXpert label is scored by the max of its mapped NIH logits (cxr_common.labels.CHEXPERT_MAP).
 Reports AUROC with patient-bootstrap CIs next to the same run's NIH-test AUROC for that finding,
 so the domain-shift drop is explicit. Approximate mappings (Lung Lesion = Mass|Nodule) are
-flagged and excluded from the shared-finding mean.
+flagged and excluded from the shared-finding mean. Findings that are unlabeled in the prepared
+split (Pneumonia when labels come from CheXlocalize masks) or have fewer than MIN_POS positives
+are reported with their counts but no AUROC.
 """
 
 from __future__ import annotations
@@ -24,6 +26,8 @@ from cxr_ml.eval.evaluate import BOOT_SEED
 from cxr_ml.eval.metrics import patient_bootstrap_weights, weighted_auroc
 from cxr_ml.explain.localization import load_run_model
 from cxr_ml.paths import DataPaths
+
+MIN_POS = 5
 
 
 @torch.no_grad()
@@ -56,9 +60,21 @@ def evaluate_chexpert(run: str, split: str, n_boot: int = 2000) -> Path:
     per: dict[str, Any] = {}
     exact_points, exact_samples = [], []
     for m in CHEXPERT_MAP:
-        y_all = idx[m.target].to_numpy()
+        y_all = idx[m.target].to_numpy().astype(np.float64)
         keep = ~np.isnan(y_all)
         y = y_all[keep].astype(np.int64)
+        if int(y.sum()) < MIN_POS:
+            per[m.target] = {
+                "n_pos": int(y.sum()),
+                "n": len(y),
+                "approximate": m.approximate,
+                "nih_outputs": list(m.nih),
+                "auroc": None,
+                "skipped": "unlabeled in this split"
+                if len(y) == 0
+                else f"fewer than {MIN_POS} positives",
+            }
+            continue
         s = logits[keep][:, [NIH_LABELS.index(n) for n in m.nih]].max(axis=1).astype(np.float64)
         pt = weighted_auroc(s, y, np.ones((1, len(y))))[0]
         bs = weighted_auroc(s, y, weights[:, keep])
@@ -85,6 +101,7 @@ def evaluate_chexpert(run: str, split: str, n_boot: int = 2000) -> Path:
         "run": run,
         "dataset": "CheXpert",
         "split": split,
+        "label_source": idx["label_source"][0] if "label_source" in idx.columns else "chexpert_csv",
         "n_images": idx.height,
         "n_patients": len(np.unique(pids)),
         "bootstrap": f"patient-clustered, {n_boot}",
@@ -106,7 +123,7 @@ def evaluate_chexpert(run: str, split: str, n_boot: int = 2000) -> Path:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("runs", nargs="+")
-    ap.add_argument("--split", default="test", choices=["test", "valid"])
+    ap.add_argument("--split", default="valid", choices=["valid", "test"])
     a = ap.parse_args()
     for r in a.runs:
         evaluate_chexpert(r, a.split)

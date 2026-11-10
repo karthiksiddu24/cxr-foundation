@@ -203,17 +203,35 @@ def build_manifest(
             *CARD_TEXT["limitations"],
         ]
     external: list[ExternalResult] = []
-    ext_path = DataPaths.from_env().eval_artifacts / run / "external_chexpert_test.json"
-    if metrics and ext_path.exists():
+    ext_dir = DataPaths.from_env().eval_artifacts / run
+    ext_path = next(
+        (
+            p
+            for p in (ext_dir / f"external_chexpert_{s}.json" for s in ("test", "valid"))
+            if p.exists()
+        ),
+        None,
+    )
+    if metrics and ext_path is not None:
         e = json.loads(ext_path.read_text())
+        skipped = [k for k, v in e["per_finding"].items() if v["auroc"] is None]
+        notes = "Mean over exactly-mapped findings; Lung Lesion maps approximately to Mass|Nodule."
+        if e.get("label_source") == "chexlocalize_masks":
+            notes += " Labels derived from CheXlocalize radiologist segmentations."
+        if skipped:
+            notes += f" Not scored (unlabeled or too few positives): {', '.join(skipped)}."
         external.append(
             ExternalResult(
                 dataset="CheXpert (radiologist-labeled)",
                 split=e["split"],
                 n_images=e["n_images"],
                 mean_auroc=Interval(**e["mean_auroc_exact_mappings"]),
-                per_finding={k: Interval(**v["auroc"]) for k, v in e["per_finding"].items()},
-                notes="Mean over exactly-mapped findings; Lung Lesion maps approximately to Mass|Nodule.",
+                per_finding={
+                    k: Interval(**v["auroc"])
+                    for k, v in e["per_finding"].items()
+                    if v["auroc"] is not None
+                },
+                notes=notes,
             )
         )
     card = ModelCard(

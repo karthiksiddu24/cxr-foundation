@@ -1,6 +1,9 @@
-"""Heatmap localization against radiologist bounding boxes.
+"""Heatmap localization against radiologist bounding boxes or segmentations.
 
-    uv run python -m cxr_ml.explain.localization <run> [--dataset nih|vindr] [--method cam|rollout]
+    uv run python -m cxr_ml.explain.localization <run> [--dataset nih|vindr|chexlocalize] [--method cam|rollout]
+
+chexlocalize = CheXpert validation images with CheXlocalize ground-truth segmentations (pixel
+masks drawn by board-certified radiologists); the region is the mask instead of box rectangles.
 
 Boxes are mapped from original-image pixels into model-input space through the same letterbox
 geometry used for preprocessing. Metrics per finding (with image-level bootstrap 95% CIs):
@@ -27,7 +30,7 @@ import polars as pl
 import torch
 import torch.nn.functional as F
 
-from cxr_common.labels import NIH_BBOX_NAME_TO_LABEL, NIH_LABELS, VINDR_MAP
+from cxr_common.labels import CHEXPERT_MAP, NIH_BBOX_NAME_TO_LABEL, NIH_LABELS, VINDR_MAP
 from cxr_ml.eval.metrics import F64
 from cxr_ml.models.classifier import CXRClassifier, ModelConfig, build_classifier
 from cxr_ml.paths import DataPaths
@@ -39,6 +42,7 @@ class BoxImage:
     finding: str  # NIH output label scored for this box set
     boxes: list[tuple[float, float, float, float]]  # x0,y0,x1,y1 in model-input pixels
     pixels: np.ndarray  # uint8 [S,S] letterboxed
+    mask: np.ndarray | None = None  # bool [S,S]; when set, used instead of boxes
 
 
 def load_run_model(run: str) -> tuple[CXRClassifier, dict[str, Any]]:
@@ -107,6 +111,34 @@ def vindr_box_images(size: int) -> list[BoxImage]:
         ]
         for nih in vmap[str(cls)]:  # approximate mappings score each mapped output
             out.append(BoxImage(str(img_id), nih, boxes, np.array(mm[row["row"]])))
+    return out
+
+
+def chexlocalize_mask_images(size: int) -> list[BoxImage]:
+    """CheXpert validation frontal images x CheXlocalize ground-truth masks (scripts/prep_external.py)."""
+    proc = DataPaths.from_env().processed("chexpert_valid")
+    idx = pl.read_parquet(proc / "index.parquet")
+    meta = pl.read_parquet(proc / "masks.parquet")
+    imgs = np.memmap(
+        proc / f"img_{size}.u8", dtype=np.uint8, mode="r", shape=(idx.height, size, size)
+    )
+    masks = np.memmap(
+        proc / f"masks_{size}.u8", dtype=np.uint8, mode="r", shape=(meta.height, size, size)
+    )
+    cmap = {m.target: m.nih for m in CHEXPERT_MAP}
+    paths = idx["path"].to_list()
+    out = []
+    for r in meta.iter_rows(named=True):
+        for nih in cmap.get(r["finding"], ()):  # approximate mappings score each mapped output
+            out.append(
+                BoxImage(
+                    paths[r["row"]],
+                    nih,
+                    [],
+                    np.array(imgs[r["row"]]),
+                    np.array(masks[r["mask"]]) > 0,
+                )
+            )
     return out
 
 
@@ -186,7 +218,7 @@ def _box_mask(boxes: list[tuple[float, float, float, float]], size: int) -> np.n
 
 def score_item(cam: np.ndarray, item: BoxImage, size: int) -> dict[str, float]:
     up = _upsample(cam, size)
-    mask = _box_mask(item.boxes, size)
+    mask = item.mask if item.mask is not None else _box_mask(item.boxes, size)
     y, x = np.unravel_index(int(np.argmax(up)), up.shape)
     hit = float(mask[y, x])
     center_hit = float(mask[size // 2, size // 2])
@@ -214,7 +246,12 @@ def _boot_ci(v: F64, n_boot: int = 2000, seed: int = 0) -> tuple[float, float]:
 def run(run_name: str, dataset: str, method: str) -> Path:
     model, cfg = load_run_model(run_name)
     size = cfg["data"]["size"]
-    items = nih_box_images(size) if dataset == "nih" else vindr_box_images(size)
+    loaders = {
+        "nih": nih_box_images,
+        "vindr": vindr_box_images,
+        "chexlocalize": chexlocalize_mask_images,
+    }
+    items = loaders[dataset](size)
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     maps = cam_maps(model, items, dev) if method == "cam" else rollout_maps(model, items, dev)
     rows = [
@@ -266,7 +303,7 @@ def run(run_name: str, dataset: str, method: str) -> Path:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("runs", nargs="+")
-    ap.add_argument("--dataset", default="nih", choices=["nih", "vindr"])
+    ap.add_argument("--dataset", default="nih", choices=["nih", "vindr", "chexlocalize"])
     ap.add_argument("--method", default="cam", choices=["cam", "rollout"])
     a = ap.parse_args()
     for r in a.runs:

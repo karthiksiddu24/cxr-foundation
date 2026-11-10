@@ -23,7 +23,7 @@ labels?** And can such a model be served with honest uncertainty, explanations, 
 | Label-efficiency study | Same ViT-B fine-tuned from random, ImageNet, and MAE weights with **1%, 10%, 100%** of labeled patients; 3 seeds with independent patient subsets | The question the project is built to answer |
 | Baselines | DenseNet-121 and ResNet-50, random vs ImageNet init, 224 and 512 px | Anchors results against the standard CheXNet-style recipe |
 | Evaluation | Per-finding AUROC/AUPRC with **patient-clustered bootstrap CIs**, paired comparisons, calibration (ECE, temperature scaling), PA vs AP stratification | Honest uncertainty; NIH test patients have up to 184 images each |
-| Robustness | External validation on CheXpert expert labels, heatmap localization vs radiologist boxes (pointing game), **shortcut audit** (do pneumothorax predictions rely on chest drains?) | Where models usually fail quietly |
+| Robustness | External validation on Stanford CheXpert (radiologist-labeled validation set), heatmap localization vs radiologist boxes (NIH) and **pixel-level segmentations from another hospital** (CheXlocalize), **shortcut audit** (do pneumothorax predictions rely on chest drains?) | Where models usually fail quietly |
 | Serving | ONNX bundle with calibrated thresholds, **exact in-graph class activation maps**, out-of-distribution guard; FastAPI + Next.js | One forward pass gives scores, 14 heatmaps and an "is this a chest X-ray?" check |
 
 ## Results
@@ -71,7 +71,10 @@ uv run scripts/report.py                                                    # RE
 ```
 
 CheXpert and VinDr-CXR require license agreements and are not downloaded automatically;
-`uv run scripts/check_data.py` shows exactly where to place them.
+`uv run scripts/check_data.py` shows exactly where to place them. The CheXpert validation images
+come from the CheXpert Plus release and their labels from CheXlocalize's radiologist
+segmentations (CheXlocalize segmented every finding positive in the CheXpert ground truth, so a
+finding is positive iff it was segmented). Then run `uv run scripts/prep_external.py`.
 
 ## Engineering
 
@@ -102,5 +105,6 @@ CheXpert and VinDr-CXR require license agreements and are not downloaded automat
 
 NIH ChestX-ray14 (NIH Clinical Center; Wang et al., CVPR 2017) — demo samples are from its test
 split. Chest-drain labels: NEATX (Jiménez-Sánchez et al., CC BY-NC-SA, not redistributed here).
-CheXpert (Stanford AIMI) and VinDr-CXR (PhysioNet) are used under their own licenses and never
-redistributed.
+CheXpert / CheXpert Plus and CheXlocalize (Stanford AIMI, Saporta et al., Nature Machine
+Intelligence 2022) and VinDr-CXR (PhysioNet) are used under their own licenses; no images or
+annotations are redistributed here, only aggregate metrics.
