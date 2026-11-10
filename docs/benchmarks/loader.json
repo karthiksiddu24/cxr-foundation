@@ -1,0 +1,12 @@
+{
+  "gpu": "NVIDIA L40S",
+  "cpu_count": 8,
+  "png_decode_1proc": 90.4,
+  "png_decode_8proc": 615.4,
+  "load_224_to_gpu_seconds": 13.8,
+  "gpu_resident_224_gather": 9047787.6,
+  "gpu_resident_224_gather_plus_augment": 27091.9,
+  "memmap_512_6workers_random_batches": 3009.5,
+  "train_step_densenet121_224_bs128": 1288.0,
+  "train_step_vit_base_224_bs128": 955.4
+}

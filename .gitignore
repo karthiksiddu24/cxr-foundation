@@ -10,10 +10,10 @@ htmlcov/
 dist/
 build/
 # data & artifacts live under $CXR_DATA_ROOT, never in the repo
-data/
-runs/
-mlruns/
-wandb/
+/data/
+/runs/
+/mlruns/
+/wandb/
 *.pt
 *.onnx
 *.u8
