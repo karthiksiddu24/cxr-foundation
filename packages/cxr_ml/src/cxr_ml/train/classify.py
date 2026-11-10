@@ -117,7 +117,7 @@ def compute_pos_weight(y: np.ndarray, mode: str) -> torch.Tensor:
 
 
 @torch.no_grad()
-def predict(model: torch.nn.Module, loader: Any, size: int) -> tuple[np.ndarray, np.ndarray]:
+def predict(model: Any, loader: Any, size: int) -> tuple[np.ndarray, np.ndarray]:
     """Logits for every row (in loader order) without augmentation. Pads the last batch so the
     compiled graph sees a single static shape."""
     model.eval()

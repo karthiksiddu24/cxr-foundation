@@ -59,13 +59,15 @@ def to_gray_uint8(arr: npt.NDArray[np.generic]) -> U8Image:
             # OpenCV decodes BGR; luminance weights applied in BGR order.
             a = rgb[:, :, 0] * 0.114 + rgb[:, :, 1] * 0.587 + rgb[:, :, 2] * 0.299
             if arr.dtype == np.uint8:
-                return np.clip(np.rint(a), 0, 255).astype(np.uint8)
+                gray: U8Image = np.clip(np.rint(a), 0, 255).astype(np.uint8)
+                return gray
         else:
             raise ValueError(f"unsupported channel count {c}")
     if a.ndim != 2:
         raise ValueError(f"expected 2-D or 3-D image, got shape {a.shape}")
     if a.dtype == np.uint8:
-        return np.ascontiguousarray(a)
+        out: U8Image = np.ascontiguousarray(a, dtype=np.uint8)
+        return out
     f = a.astype(np.float64)
     lo, hi = float(f.min()), float(f.max())
     if hi <= lo:

@@ -1,0 +1,5 @@
+# Shared supervised CNN recipe (Phase 2). Per-run files override model/optim.
+data: {size: 224, batch_size: 128}
+optim: {weight_decay: 0.05, warmup_frac: 0.05, grad_clip: 3.0}
+schedule: {epochs: 30, early_stop_patience: 6}
+pos_weight: sqrt

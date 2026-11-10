@@ -58,9 +58,7 @@ def build_index(raw: Path) -> pl.DataFrame:
         pl.col("spacing_y").cast(pl.Float64),
     )
     labels = np.array([parse_nih_finding_string(s) for s in df["findings"]], dtype=np.uint8)
-    df = df.with_columns(
-        [pl.Series(name, labels[:, i]) for i, name in enumerate(NIH_LABELS)]
-    )
+    df = df.with_columns([pl.Series(name, labels[:, i]) for i, name in enumerate(NIH_LABELS)])
     test = set(read_list(raw / "test_list.txt"))
     trainval = set(read_list(raw / "train_val_list.txt"))
     if test & trainval:

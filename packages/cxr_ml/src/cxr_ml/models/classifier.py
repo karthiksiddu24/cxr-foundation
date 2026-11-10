@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import timm
 import torch
@@ -95,7 +96,7 @@ class CXRClassifier(nn.Module):
 
 
 def build_backbone(cfg: ModelConfig) -> nn.Module:
-    kwargs: dict[str, object] = {
+    kwargs: dict[str, Any] = {
         "num_classes": cfg.num_classes,
         "in_chans": 1,
         "drop_rate": cfg.drop_rate,

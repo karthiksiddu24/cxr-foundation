@@ -13,7 +13,7 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 import pydicom
-from pydicom.pixels import apply_modality_lut, apply_voi_lut
+from pydicom.pixels.processing import apply_modality_lut, apply_voi_lut
 
 from cxr_common.preprocess import U8Image, to_gray_uint8
 
@@ -59,10 +59,11 @@ def _str_tag(ds: pydicom.Dataset, name: str) -> str | None:
 
 
 def _percentile_window(arr: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-    lo, hi = np.percentile(arr, [0.5, 99.5])
+    lo, hi = (float(v) for v in np.percentile(arr, [0.5, 99.5]))
     if hi <= lo:
         lo, hi = float(arr.min()), float(arr.max()) + 1e-6
-    return np.clip((arr - lo) / (hi - lo), 0.0, 1.0)
+    out: npt.NDArray[np.float64] = np.clip((arr - lo) / (hi - lo), 0.0, 1.0)
+    return out
 
 
 def _first(v: object) -> float:
@@ -96,21 +97,24 @@ def dicom_to_uint8(data: bytes | pydicom.Dataset) -> tuple[U8Image, DicomInfo]:
     if n_frames > 1:
         arr = arr[0]
     bits = ds.get("BitsStored")
-    info_kwargs = {
-        "modality": _str_tag(ds, "Modality"),
-        "view_position": _str_tag(ds, "ViewPosition"),
-        "body_part": _str_tag(ds, "BodyPartExamined"),
-        "photometric": photometric,
-        "bits_stored": int(bits) if bits is not None else None,
-    }
+
+    def info(source: str) -> DicomInfo:
+        return DicomInfo(
+            modality=_str_tag(ds, "Modality"),
+            view_position=_str_tag(ds, "ViewPosition"),
+            body_part=_str_tag(ds, "BodyPartExamined"),
+            photometric=photometric,
+            bits_stored=int(bits) if bits is not None else None,
+            window_source=source,
+        )
 
     if photometric not in ("MONOCHROME1", "MONOCHROME2"):
         # Color (e.g. secondary capture RGB/YBR): pydicom returns RGB; convert to gray.
         rgb = np.asarray(arr)
         if rgb.ndim == 3 and rgb.shape[-1] == 3:
             bgr = rgb[..., ::-1]
-            return to_gray_uint8(bgr), DicomInfo(**info_kwargs, window_source="color")
-        return to_gray_uint8(rgb), DicomInfo(**info_kwargs, window_source="color")
+            return to_gray_uint8(bgr), info("color")
+        return to_gray_uint8(rgb), info("color")
 
     x = np.asarray(apply_modality_lut(arr, ds), dtype=np.float64)
     if "VOILUTSequence" in ds:
@@ -129,4 +133,4 @@ def dicom_to_uint8(data: bytes | pydicom.Dataset) -> tuple[U8Image, DicomInfo]:
     if photometric == "MONOCHROME1":
         y = 1.0 - y
     out = np.clip(np.rint(y * 255.0), 0, 255).astype(np.uint8)
-    return out, DicomInfo(**info_kwargs, window_source=source)
+    return out, info(source)

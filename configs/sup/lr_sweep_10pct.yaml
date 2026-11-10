@@ -1,0 +1,3 @@
+# Short LR check at 10% labels (val only) used to pick LRs for the 100% baselines.
+data: {fraction: 0.1}
+schedule: {epochs: 40, eval_every_steps: 122, early_stop_patience: 6}

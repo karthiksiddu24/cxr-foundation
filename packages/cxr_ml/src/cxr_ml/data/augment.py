@@ -40,17 +40,24 @@ def u8_to_float(x_u8: torch.Tensor) -> torch.Tensor:
     return x_u8.unsqueeze(1).float().div_(255.0)
 
 
-def _uniform(b: int, lo: float, hi: float, device: torch.device, g: torch.Generator | None) -> torch.Tensor:
+def _uniform(
+    b: int, lo: float, hi: float, device: torch.device, g: torch.Generator | None
+) -> torch.Tensor:
     return torch.rand(b, device=device, generator=g) * (hi - lo) + lo
 
 
 def augment(
-    x: torch.Tensor, cfg: AugmentConfig, out_size: int | None = None, g: torch.Generator | None = None
+    x: torch.Tensor,
+    cfg: AugmentConfig,
+    out_size: int | None = None,
+    g: torch.Generator | None = None,
 ) -> torch.Tensor:
     """x: float [B,1,S,S] in [0,1] -> augmented float [B,1,out,out] in [0,1]."""
     if not cfg.enabled:
         if out_size and out_size != x.shape[-1]:
-            return F.interpolate(x, size=(out_size, out_size), mode="bilinear", antialias=True, align_corners=False)
+            return F.interpolate(
+                x, size=(out_size, out_size), mode="bilinear", antialias=True, align_corners=False
+            )
         return x
     b, dev = x.shape[0], x.device
     out = out_size or x.shape[-1]
@@ -62,8 +69,12 @@ def augment(
     sw = torch.sqrt(area * r).clamp(max=1.0)
     sh = torch.sqrt(area / r).clamp(max=1.0)
     # Crop center: anywhere that keeps the crop inside the image, plus small translation.
-    cx = (torch.rand(b, device=dev, generator=g) * 2 - 1) * (1 - sw) + _uniform(b, -cfg.translate, cfg.translate, dev, g)
-    cy = (torch.rand(b, device=dev, generator=g) * 2 - 1) * (1 - sh) + _uniform(b, -cfg.translate, cfg.translate, dev, g)
+    cx = (torch.rand(b, device=dev, generator=g) * 2 - 1) * (1 - sw) + _uniform(
+        b, -cfg.translate, cfg.translate, dev, g
+    )
+    cy = (torch.rand(b, device=dev, generator=g) * 2 - 1) * (1 - sh) + _uniform(
+        b, -cfg.translate, cfg.translate, dev, g
+    )
     th = _uniform(b, -cfg.rotate_deg, cfg.rotate_deg, dev, g) * (math.pi / 180)
     flip = torch.where(torch.rand(b, device=dev, generator=g) < cfg.hflip_p, -1.0, 1.0)
 

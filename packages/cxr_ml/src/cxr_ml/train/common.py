@@ -140,10 +140,20 @@ class Tracker:
         self._mlflow: Any = None
         self._wandb: Any = None
         if backend == "mlflow":
+            # The file store is in "maintenance mode" in MLflow 3.x but works fine on one machine
+            # and avoids running a database server.
+            os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
             import mlflow
 
             root = Path(os.environ.get("CXR_DATA_ROOT", "/data/cxr"))
-            mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", f"file://{root}/mlruns"))
+            mlflow.set_tracking_uri(
+                os.environ.get("MLFLOW_TRACKING_URI", f"file://{root}/mlflow/runs")
+            )
+            (root / "mlflow").mkdir(parents=True, exist_ok=True)
+            if mlflow.get_experiment_by_name(experiment) is None:
+                mlflow.create_experiment(
+                    experiment, artifact_location=f"file://{root}/mlflow/artifacts/{experiment}"
+                )
             mlflow.set_experiment(experiment)
             mlflow.start_run(run_name=run_name)
             flat = _flatten(config)
@@ -157,7 +167,7 @@ class Tracker:
                 name=run_name,
                 config=config,
                 dir=str(run_dir),
-                mode=os.environ.get("WANDB_MODE", "offline"),
+                mode=os.environ.get("WANDB_MODE", "offline"),  # type: ignore[arg-type]
             )
         elif backend != "none":
             raise ValueError(f"unknown tracking backend {backend!r}")

@@ -1,0 +1,2 @@
+uv run python -m cxr_ml.train.mae --config configs/mae/vit_base.yaml name=mae_vit_base_ep800
+uv run python -m cxr_ml.train.mae --config configs/mae/vit_small.yaml name=mae_vit_small_ep800

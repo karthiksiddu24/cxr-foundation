@@ -23,6 +23,7 @@ dev = [
   "pytest==9.2.0",
   "pytest-asyncio==1.4.1.post1",
   "pytest-cov==7.1.0",
+  "onnx==1.23.2",
   "pre-commit==4.7.0",
   "types-pyyaml",
 ]
@@ -34,7 +35,7 @@ extend-exclude = ["web"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "N", "PT", "NPY"]
-ignore = ["N812", "N806", "N803", "RUF001", "RUF002", "RUF003", "PT018", "PT011"]
+ignore = ["N812", "N806", "N803", "RUF001", "RUF002", "RUF003", "PT018", "PT011", "E501"]  # line length is owned by `ruff format`
 
 [tool.ruff.lint.isort]
 known-first-party = ["cxr_common", "cxr_ml", "cxr_server"]
@@ -49,9 +50,16 @@ files = ["packages/cxr_common/src", "packages/cxr_server/src", "packages/cxr_ml/
 module = ["cxr_common.*", "cxr_server.*"]
 strict = true
 
+# Research code: checked, but torch/timm's dynamic nn.Module attribute typing produces mostly
+# false positives (Tensor | Module unions), so those specific codes are relaxed here only.
+[[tool.mypy.overrides]]
+module = ["cxr_ml.*"]
+disable_error_code = ["operator", "index", "union-attr", "no-any-return", "call-overload", "misc", "no-untyped-call"]
+
 [tool.pytest.ini_options]
 testpaths = ["packages/cxr_common/tests", "packages/cxr_ml/tests", "packages/cxr_server/tests", "tests"]
 addopts = "-ra --strict-markers --import-mode=importlib"
+pythonpath = ["packages/cxr_server/tests"]
 markers = [
   "gpu: needs a CUDA GPU",
   "data: needs the real preprocessed datasets under CXR_DATA_ROOT",

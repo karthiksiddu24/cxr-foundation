@@ -84,16 +84,20 @@ class _BatchMemmap(Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
     def __len__(self) -> int:
         return self.n
 
-    def __getitem__(self, rows: list[int]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:  # type: ignore[override]
+    def __getitem__(self, rows: list[int]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         if self._mm is None:  # opened lazily in each worker
-            self._mm = np.memmap(self.path, dtype=np.uint8, mode="r", shape=(self.n, self.size, self.size))
+            self._mm = np.memmap(
+                self.path, dtype=np.uint8, mode="r", shape=(self.n, self.size, self.size)
+            )
         r = np.sort(np.asarray(rows, dtype=np.int64))
         x = torch.from_numpy(np.ascontiguousarray(self._mm[r]))
         return x, torch.from_numpy(self.labels[r]), torch.from_numpy(r)
 
 
 class _RowBatchSampler(Sampler[list[int]]):
-    def __init__(self, rows: np.ndarray, batch_size: int, shuffle: bool, drop_last: bool, seed: int):
+    def __init__(
+        self, rows: np.ndarray, batch_size: int, shuffle: bool, drop_last: bool, seed: int
+    ):
         self.rows, self.bs, self.shuffle, self.drop_last = rows, batch_size, shuffle, drop_last
         self.rng = np.random.default_rng(seed)
 

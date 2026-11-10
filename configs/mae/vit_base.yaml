@@ -1,0 +1,4 @@
+name: mae_vit_base_ep800
+mae: {arch: vit_base_patch16_224}
+batch_size: 256
+epochs: 800
