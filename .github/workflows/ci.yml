@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.13.6"
+  NODE_VERSION: "24.22.0"
+
+jobs:
+  python-lint:
+    name: Python lint + types
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
+      - run: uv sync --frozen --group dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+
+  python-test-server:
+    name: Server + shared tests (no torch)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
+      # Only the light packages: verifies the server really runs without torch.
+      - run: uv sync --frozen --package cxr-server --group dev
+      # --no-sync: plain `uv run` would re-sync the whole workspace (including torch).
+      - run: uv run --no-sync python -c "import importlib.util as u, sys; sys.exit(u.find_spec('torch') is not None)"
+      - run: uv run --no-sync pytest packages/cxr_common packages/cxr_server -q
+
+  python-test-ml:
+    name: ML tests (CPU, synthetic data)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
+      - run: uv sync --frozen --group dev
+      # `data`-marked tests skip automatically when the real datasets are absent.
+      - run: uv run pytest packages/cxr_ml tests -q
+
+  api-contract:
+    name: OpenAPI schema and TS types are up to date
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: uv sync --frozen --package cxr-server
+      - run: uv run --no-sync scripts/export_openapi.py
+      - run: npm ci
+        working-directory: web
+      - run: npm run gen:api
+        working-directory: web
+      - run: git diff --exit-code docs/openapi.json web/src/lib/api/schema.d.ts
+
+  web:
+    name: Web lint, types, unit tests, build
+    runs-on: ubuntu-24.04
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    name: End-to-end (Docker stack + Playwright)
+    runs-on: ubuntu-24.04
+    needs: [web, python-test-server]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: web/package-lock.json }
+      - name: Tiny test model bundle (no weights or datasets needed)
+        run: uv sync --frozen --package cxr-server --group dev && uv run --no-sync scripts/make_test_bundle.py models/current
+      - run: docker compose up -d --build --wait
+      - run: npm ci && npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npx playwright test
+        working-directory: web
+        env: { E2E_BASE_URL: "http://localhost:3000" }
+      - if: failure()
+        run: docker compose logs --no-color
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: playwright-report, path: web/playwright-report }
+
+  docker-gpu:
+    name: Build GPU API image
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f docker/server.gpu.Dockerfile -t cxr-foundation-api:gpu .

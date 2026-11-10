@@ -1,0 +1,11 @@
+# Override: run the API on the GPU (requires the NVIDIA container toolkit).
+services:
+  api:
+    build: { context: ., dockerfile: docker/server.gpu.Dockerfile }
+    image: cxr-foundation-api:gpu
+    environment:
+      CXR_ORT_PROVIDERS: auto
+    deploy:
+      resources:
+        reservations:
+          devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }]

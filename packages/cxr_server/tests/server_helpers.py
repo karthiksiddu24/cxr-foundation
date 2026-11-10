@@ -56,9 +56,9 @@ def tiny_onnx(path: Path) -> None:
     onnx.save(model, str(path))
 
 
-@pytest.fixture(scope="session")
-def bundle_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    d = tmp_path_factory.mktemp("bundle")
+def write_tiny_bundle(d: Path) -> Path:
+    """Write a complete, valid bundle with a tiny hand-built ONNX model (no torch, no data)."""
+    d.mkdir(parents=True, exist_ok=True)
     tiny_onnx(d / "model.onnx")
     # OOD stats: typical radiograph-like inputs have pooled features ~0.3-0.7.
     np.savez(
@@ -105,6 +105,11 @@ def bundle_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
         ),
     ).save(d)
     return d
+
+
+@pytest.fixture(scope="session")
+def bundle_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return write_tiny_bundle(tmp_path_factory.mktemp("bundle"))
 
 
 def make_settings(bundle_dir: Path, **kw: object) -> Settings:

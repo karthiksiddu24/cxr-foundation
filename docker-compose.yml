@@ -1,0 +1,33 @@
+# One-command local launch (CPU inference):   docker compose up --build   -> http://localhost:3000
+# GPU inference:   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+# The model bundle is mounted read-only from CXR_BUNDLE_HOST_DIR (see .env.example).
+services:
+  api:
+    build: { context: ., dockerfile: docker/server.Dockerfile }
+    image: cxr-foundation-api:cpu
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      CXR_BUNDLE_DIR: /models/current
+      CXR_ORT_PROVIDERS: ${CXR_ORT_PROVIDERS:-cpu}
+      CXR_CORS_ORIGINS: '["http://localhost:3000"]'
+      CXR_RATE_LIMIT: ${CXR_RATE_LIMIT:-30/minute}
+      CXR_MAX_UPLOAD_MB: ${CXR_MAX_UPLOAD_MB:-25}
+      CXR_LOG_LEVEL: ${CXR_LOG_LEVEL:-INFO}
+    volumes:
+      - ${CXR_BUNDLE_HOST_DIR:-./models/current}:/models/current:ro
+    read_only: true
+    tmpfs: [/tmp]
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      args: { API_INTERNAL_URL: "http://api:8000" }
+    image: cxr-foundation-web:latest
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      api: { condition: service_healthy }
+    read_only: true
+    tmpfs: [/tmp, /web/.next/cache]
+    restart: unless-stopped
