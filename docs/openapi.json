@@ -1,0 +1,993 @@
+{
+  "components": {
+    "schemas": {
+      "Body_predict_v1_predict_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PNG, JPEG or DICOM, max size per server config",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_predict_v1_predict_post",
+        "type": "object"
+      },
+      "ExternalResult": {
+        "additionalProperties": false,
+        "properties": {
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "mean_auroc": {
+            "$ref": "#/components/schemas/Interval"
+          },
+          "n_images": {
+            "title": "N Images",
+            "type": "integer"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "per_finding": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Interval"
+            },
+            "title": "Per Finding",
+            "type": "object"
+          },
+          "split": {
+            "title": "Split",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset",
+          "split",
+          "n_images",
+          "mean_auroc",
+          "per_finding"
+        ],
+        "title": "ExternalResult",
+        "type": "object"
+      },
+      "FindingInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "temperature": {
+            "title": "Temperature",
+            "type": "number"
+          },
+          "test_auprc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Interval"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "test_auroc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Interval"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "test_prevalence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Prevalence"
+          },
+          "test_sensitivity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Sensitivity"
+          },
+          "test_specificity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Specificity"
+          },
+          "threshold": {
+            "title": "Threshold",
+            "type": "number"
+          },
+          "threshold_method": {
+            "title": "Threshold Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "display_name",
+          "description",
+          "threshold",
+          "threshold_method",
+          "temperature",
+          "test_auroc",
+          "test_auprc",
+          "test_prevalence",
+          "test_sensitivity",
+          "test_specificity"
+        ],
+        "title": "FindingInfo",
+        "type": "object"
+      },
+      "FindingResult": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "flagged": {
+            "description": "probability >= threshold chosen on validation data",
+            "title": "Flagged",
+            "type": "boolean"
+          },
+          "heatmap": {
+            "$ref": "#/components/schemas/Heatmap"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "probability": {
+            "description": "Calibrated model score (not a diagnosis)",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Probability",
+            "type": "number"
+          },
+          "test_auroc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Interval"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "threshold": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Threshold",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "display_name",
+          "description",
+          "probability",
+          "threshold",
+          "flagged",
+          "heatmap"
+        ],
+        "title": "FindingResult",
+        "type": "object"
+      },
+      "Health": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
+      "Heatmap": {
+        "additionalProperties": false,
+        "properties": {
+          "grid": {
+            "description": "Class activation map normalized to [0,1] per finding, rows top-to-bottom, in model-input space (see HeatmapGeometry).",
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Grid",
+            "type": "array"
+          },
+          "logit_max": {
+            "title": "Logit Max",
+            "type": "number"
+          },
+          "logit_min": {
+            "title": "Logit Min",
+            "type": "number"
+          }
+        },
+        "required": [
+          "grid",
+          "logit_min",
+          "logit_max"
+        ],
+        "title": "Heatmap",
+        "type": "object"
+      },
+      "HeatmapGeometry": {
+        "additionalProperties": false,
+        "description": "Maps the square model-input space onto the original image.\n\noriginal_x = (model_x - pad_x) / scale, likewise for y. The heatmap grid spans the full\nsquare [0, input_size) in both axes.",
+        "properties": {
+          "grid_h": {
+            "title": "Grid H",
+            "type": "integer"
+          },
+          "grid_w": {
+            "title": "Grid W",
+            "type": "integer"
+          },
+          "input_size": {
+            "title": "Input Size",
+            "type": "integer"
+          },
+          "pad_x": {
+            "title": "Pad X",
+            "type": "integer"
+          },
+          "pad_y": {
+            "title": "Pad Y",
+            "type": "integer"
+          },
+          "scale": {
+            "title": "Scale",
+            "type": "number"
+          }
+        },
+        "required": [
+          "input_size",
+          "grid_h",
+          "grid_w",
+          "scale",
+          "pad_x",
+          "pad_y"
+        ],
+        "title": "HeatmapGeometry",
+        "type": "object"
+      },
+      "ImageInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "display_height": {
+            "title": "Display Height",
+            "type": "integer"
+          },
+          "display_png_base64": {
+            "description": "Grayscale PNG used for display (after DICOM windowing)",
+            "title": "Display Png Base64",
+            "type": "string"
+          },
+          "display_width": {
+            "title": "Display Width",
+            "type": "integer"
+          },
+          "format": {
+            "enum": [
+              "png",
+              "jpeg",
+              "dicom"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "format",
+          "width",
+          "height",
+          "display_png_base64",
+          "display_width",
+          "display_height"
+        ],
+        "title": "ImageInfo",
+        "type": "object"
+      },
+      "Interval": {
+        "additionalProperties": false,
+        "properties": {
+          "ci_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci High"
+          },
+          "ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci Low"
+          },
+          "point": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Point"
+          }
+        },
+        "required": [
+          "point"
+        ],
+        "title": "Interval",
+        "type": "object"
+      },
+      "ModelCard": {
+        "additionalProperties": false,
+        "properties": {
+          "eval_artifact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eval Artifact"
+          },
+          "evaluation_data": {
+            "title": "Evaluation Data",
+            "type": "string"
+          },
+          "external": {
+            "items": {
+              "$ref": "#/components/schemas/ExternalResult"
+            },
+            "title": "External",
+            "type": "array"
+          },
+          "intended_use": {
+            "title": "Intended Use",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "mean_ece_calibrated": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Ece Calibrated"
+          },
+          "mean_ece_raw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Ece Raw"
+          },
+          "mean_test_auroc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Interval"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "not_intended_for": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Intended For",
+            "type": "array"
+          },
+          "training_data": {
+            "title": "Training Data",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intended_use",
+          "not_intended_for",
+          "training_data",
+          "evaluation_data",
+          "limitations"
+        ],
+        "title": "ModelCard",
+        "type": "object"
+      },
+      "ModelInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "arch": {
+            "title": "Arch",
+            "type": "string"
+          },
+          "card": {
+            "$ref": "#/components/schemas/ModelCard"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "disclaimer": {
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "execution_provider": {
+            "title": "Execution Provider",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingInfo"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "git_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Git Commit"
+          },
+          "heatmap_grid": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Heatmap Grid",
+            "type": "array"
+          },
+          "init": {
+            "title": "Init",
+            "type": "string"
+          },
+          "input_size": {
+            "title": "Input Size",
+            "type": "integer"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "placeholder": {
+            "title": "Placeholder",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id",
+          "version",
+          "placeholder",
+          "arch",
+          "init",
+          "input_size",
+          "heatmap_grid",
+          "findings",
+          "card",
+          "git_commit",
+          "created_at",
+          "execution_provider",
+          "disclaimer"
+        ],
+        "title": "ModelInfo",
+        "type": "object"
+      },
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "placeholder": {
+            "title": "Placeholder",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id",
+          "version",
+          "placeholder"
+        ],
+        "title": "ModelRef",
+        "type": "object"
+      },
+      "PredictResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "disclaimer": {
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "findings": {
+            "description": "Sorted by probability, highest first",
+            "items": {
+              "$ref": "#/components/schemas/FindingResult"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/HeatmapGeometry"
+          },
+          "image": {
+            "$ref": "#/components/schemas/ImageInfo"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ModelRef"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/Quality"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/Timing"
+          }
+        },
+        "required": [
+          "request_id",
+          "model",
+          "image",
+          "geometry",
+          "quality",
+          "findings",
+          "timing",
+          "disclaimer"
+        ],
+        "title": "PredictResponse",
+        "type": "object"
+      },
+      "Problem": {
+        "additionalProperties": false,
+        "description": "RFC 7807 problem details.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "status",
+          "detail",
+          "code"
+        ],
+        "title": "Problem",
+        "type": "object"
+      },
+      "Quality": {
+        "additionalProperties": false,
+        "properties": {
+          "ood_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Squared Mahalanobis distance of the image embedding to training data",
+            "title": "Ood Score"
+          },
+          "ood_threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ood Threshold"
+          },
+          "plausible": {
+            "description": "False when any high-severity warning fired. Scores must then be treated as unreliable; the UI hides them behind an explicit 'show anyway'.",
+            "title": "Plausible",
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/QualityWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plausible",
+          "warnings"
+        ],
+        "title": "Quality",
+        "type": "object"
+      },
+      "QualityWarning": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "examples": [
+              "color_image"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "caution",
+              "high"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message"
+        ],
+        "title": "QualityWarning",
+        "type": "object"
+      },
+      "Ready": {
+        "additionalProperties": false,
+        "properties": {
+          "execution_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Provider"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ready"
+        ],
+        "title": "Ready",
+        "type": "object"
+      },
+      "Timing": {
+        "additionalProperties": false,
+        "properties": {
+          "decode_ms": {
+            "title": "Decode Ms",
+            "type": "number"
+          },
+          "inference_ms": {
+            "title": "Inference Ms",
+            "type": "number"
+          },
+          "total_ms": {
+            "title": "Total Ms",
+            "type": "number"
+          }
+        },
+        "required": [
+          "decode_ms",
+          "inference_ms",
+          "total_ms"
+        ],
+        "title": "Timing",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Chest X-ray finding scores with heatmaps. **Research demonstration only. Not a medical device. Not for clinical use.**",
+    "title": "CXR-Foundation API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ready"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ready"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Readiness probe",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/v1/model-info": {
+      "get": {
+        "operationId": "model_info_v1_model_info_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Model card, metrics and intended use",
+        "tags": [
+          "model"
+        ]
+      }
+    },
+    "/v1/predict": {
+      "post": {
+        "operationId": "predict_v1_predict_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_predict_v1_predict_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Score a chest X-ray (PNG, JPEG or DICOM)",
+        "tags": [
+          "model"
+        ]
+      }
+    }
+  }
+}

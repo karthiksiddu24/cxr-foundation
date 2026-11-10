@@ -1,7 +1,7 @@
 # LR selection on val (10% labels, DenseNet-121), then the 4 baselines at 100% labels.
-uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml model.arch=densenet121 model.init=imagenet optim.lr=1e-4 name=lrsweep_densenet121_imagenet_lr1e-4
-uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml model.arch=densenet121 model.init=imagenet optim.lr=3e-4 name=lrsweep_densenet121_imagenet_lr3e-4
-uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml model.arch=densenet121 model.init=imagenet optim.lr=1e-3 name=lrsweep_densenet121_imagenet_lr1e-3
-uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml model.arch=densenet121 model.init=random optim.lr=3e-4 name=lrsweep_densenet121_random_lr3e-4
-uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml model.arch=densenet121 model.init=random optim.lr=1e-3 name=lrsweep_densenet121_random_lr1e-3
-uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml model.arch=densenet121 model.init=random optim.lr=3e-3 name=lrsweep_densenet121_random_lr3e-3
+uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml eval_test=false model.arch=densenet121 model.init=imagenet optim.lr=1e-4 name=lrsweep_densenet121_imagenet_lr1e-4
+uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml eval_test=false model.arch=densenet121 model.init=imagenet optim.lr=3e-4 name=lrsweep_densenet121_imagenet_lr3e-4
+uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml eval_test=false model.arch=densenet121 model.init=imagenet optim.lr=1e-3 name=lrsweep_densenet121_imagenet_lr1e-3
+uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml eval_test=false model.arch=densenet121 model.init=random optim.lr=3e-4 name=lrsweep_densenet121_random_lr3e-4
+uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml eval_test=false model.arch=densenet121 model.init=random optim.lr=1e-3 name=lrsweep_densenet121_random_lr1e-3
+uv run python -m cxr_ml.train.classify --config configs/sup/base.yaml --config configs/sup/lr_sweep_10pct.yaml eval_test=false model.arch=densenet121 model.init=random optim.lr=3e-3 name=lrsweep_densenet121_random_lr3e-3

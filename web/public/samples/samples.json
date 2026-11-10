@@ -1,0 +1,43 @@
+{
+  "source": "NIH ChestX-ray14 official test split (not used for training or model selection).",
+  "citation": "Wang X. et al. ChestX-ray8: Hospital-scale Chest X-ray Database and Benchmarks. CVPR 2017.",
+  "label_note": "Dataset labels were text-mined from radiology reports and can be wrong.",
+  "samples": [
+    {
+      "id": "00010381_000",
+      "file": "/samples/00010381_000.png",
+      "title": "Enlarged heart",
+      "dataset_labels": ["Cardiomegaly"],
+      "view": "PA",
+      "age": 60,
+      "sex": "M"
+    },
+    {
+      "id": "00016191_015",
+      "file": "/samples/00016191_015.png",
+      "title": "Pleural effusion",
+      "dataset_labels": ["Pleural effusion"],
+      "view": "PA",
+      "age": 65,
+      "sex": "M"
+    },
+    {
+      "id": "00016587_005",
+      "file": "/samples/00016587_005.png",
+      "title": "Pneumothorax",
+      "dataset_labels": ["Pneumothorax"],
+      "view": "PA",
+      "age": 48,
+      "sex": "F"
+    },
+    {
+      "id": "00020405_001",
+      "file": "/samples/00020405_001.png",
+      "title": "No finding in report",
+      "dataset_labels": ["No finding"],
+      "view": "PA",
+      "age": 48,
+      "sex": "M"
+    }
+  ]
+}

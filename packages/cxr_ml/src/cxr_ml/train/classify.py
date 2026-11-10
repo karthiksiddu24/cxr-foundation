@@ -83,6 +83,7 @@ class TrainConfig:
     schedule: ScheduleConfig = field(default_factory=ScheduleConfig)
     pos_weight: str = "sqrt"  # none | sqrt | full  (neg/pos ratio per class, clamped)
     compile: bool = True
+    eval_test: bool = True  # False for hyperparameter sweeps: selection must never see test data
     tracking: str = "mlflow"  # mlflow | wandb | none
     tags: dict[str, str] = field(default_factory=dict)
 
@@ -350,7 +351,8 @@ def run(cfg: TrainConfig) -> Path:
     )
     test_loader = make(rows_test, cfg.data.eval_batch_size, False)
     tm = float("nan")
-    for split, loader in (("val", val_loader), ("test", test_loader)):
+    final_splits = [("val", val_loader)] + ([("test", test_loader)] if cfg.eval_test else [])
+    for split, loader in final_splits:
         lg, rows = predict(fmodel, loader, s)
         save_preds(run_dir / f"preds_{split}.parquet", df, rows, lg)
         if split == "test":

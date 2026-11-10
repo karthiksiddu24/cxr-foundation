@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. Dark is the default (radiology reading rooms are dark). Contrast targets:
+ * body text >= 7:1, secondary text >= 4.5:1, UI boundaries >= 3:1 against their surface.
+ * Accent (teal) is reserved for focus, selection and primary actions. "Flag" (amber) marks
+ * scores above threshold and is always paired with text, never color alone.
+ */
+:root {
+  --radius: 0.5rem;
+
+  --background: #f6f7f9;
+  --foreground: #0f1419;
+  --card: #ffffff;
+  --card-foreground: #0f1419;
+  --popover: #ffffff;
+  --popover-foreground: #0f1419;
+  --surface-2: #eef0f3;
+  --primary: #0b6e66;
+  --primary-foreground: #ffffff;
+  --secondary: #e9ecf0;
+  --secondary-foreground: #1b232c;
+  --muted: #eef0f3;
+  --muted-foreground: #4b5563;
+  --accent: #e3f1ef;
+  --accent-foreground: #0b4f49;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --flag: #9a5200;
+  --flag-soft: #fdf1e1;
+  --warning: #9a5200;
+  --border: #d6dbe1;
+  --input: #7d8794; /* >= 3:1 on card and background (WCAG 1.4.11) */
+  --ring: #0b6e66;
+  --bar-track: #e3e7eb;
+  --bar-fill: #5b6775;
+  --viewer-bg: #000000;
+}
+
+.dark {
+  --background: #0a0c0f;
+  --foreground: #e7eaee;
+  --card: #111419;
+  --card-foreground: #e7eaee;
+  --popover: #151920;
+  --popover-foreground: #e7eaee;
+  --surface-2: #171b22;
+  --primary: #3cc8b4;
+  --primary-foreground: #04201c;
+  --secondary: #1b2028;
+  --secondary-foreground: #d5dae1;
+  --muted: #171b22;
+  --muted-foreground: #9aa4b0;
+  --accent: #12302c;
+  --accent-foreground: #8fe6d8;
+  --destructive: #f2665a;
+  --destructive-foreground: #1a0503;
+  --flag: #f2b13c;
+  --flag-soft: #2a2012;
+  --warning: #f2b13c;
+  --border: #252b34;
+  --input: #646e7c;
+  --ring: #3cc8b4;
+  --bar-track: #1f252d;
+  --bar-fill: #8794a3;
+  --viewer-bg: #000000;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-surface-2: var(--surface-2);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-flag: var(--flag);
+  --color-flag-soft: var(--flag-soft);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-bar-track: var(--bar-track);
+  --color-bar-fill: var(--bar-fill);
+  --color-viewer-bg: var(--viewer-bg);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    color-scheme: dark;
+  }
+  html:not(.dark) {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
