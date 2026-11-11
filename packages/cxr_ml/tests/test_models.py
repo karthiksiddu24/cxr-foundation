@@ -61,7 +61,9 @@ def test_mae_loss_only_on_masked_patches() -> None:
 def test_encoder_loads_into_classifier(tmp_path: Path) -> None:
     mae = MAE(TINY_MAE)
     p = tmp_path / "enc.pt"
-    torch.save({"encoder": mae.encoder_state_dict()}, p)
+    # Same layout as train/mae.py snapshots: provenance includes torch.__version__ (TorchVersion),
+    # which the weights-only loader rejects unless allowlisted.
+    torch.save({"encoder": mae.encoder_state_dict(), "epoch": 1, "torch": torch.__version__}, p)
     clf = build_classifier(
         ModelConfig(arch="vit_tiny_patch16_224", init="ssl", ssl_checkpoint=str(p), img_size=64)
     )

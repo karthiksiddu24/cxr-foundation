@@ -123,7 +123,10 @@ def build_backbone(cfg: ModelConfig) -> nn.Module:
 
 def load_encoder(model: nn.Module, path: Path) -> None:
     """Load SSL encoder weights; only the classification head may be missing."""
-    blob = torch.load(path, map_location="cpu", weights_only=True)
+    # Snapshots carry run provenance, which includes torch.__version__ (a TorchVersion);
+    # allow exactly that type and keep the safe weights-only loader.
+    with torch.serialization.safe_globals([torch.torch_version.TorchVersion]):
+        blob = torch.load(path, map_location="cpu", weights_only=True)
     sd = blob.get("encoder", blob)
     missing, unexpected = model.load_state_dict(sd, strict=False)
     allowed_missing = {"head.weight", "head.bias"}
