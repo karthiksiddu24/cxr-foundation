@@ -166,12 +166,10 @@ export function LabelEfficiencyChart({ series, title }: { series: Series[]; titl
                       fill={c}
                       className="stroke-card"
                       strokeWidth={2}
-                      tabIndex={0}
-                      aria-label={`${s.label}, ${p.fraction * 100}% labels: AUROC ${p.mean.toFixed(3)}, 95% CI ${p.ci_low.toFixed(3)} to ${p.ci_high.toFixed(3)}`}
+                      // Inside role="img" children are presentational: points are a mouse
+                      // affordance only; keyboard and screen-reader users get the "Show table" view.
                       onMouseEnter={() => setHover({ s, p })}
                       onMouseLeave={() => setHover(null)}
-                      onFocus={() => setHover({ s, p })}
-                      onBlur={() => setHover(null)}
                     />
                   ))}
                   <text

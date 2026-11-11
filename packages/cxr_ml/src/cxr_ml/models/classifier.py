@@ -73,9 +73,10 @@ class CXRClassifier(nn.Module):
         if self.vit:
             npt = self.backbone.num_prefix_tokens
             patch = f[:, npt:]
-            b, n, c = patch.shape
-            s = round(n**0.5)
-            return patch.transpose(1, 2).reshape(b, c, s, s)
+            # Static patch grid from the model (not sqrt of a traced token count, which breaks
+            # ONNX export: under tracing the count is a tensor).
+            gh, gw = (int(v) for v in self.backbone.patch_embed.grid_size)
+            return patch.transpose(1, 2).reshape(patch.shape[0], patch.shape[2], gh, gw)
         return f
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

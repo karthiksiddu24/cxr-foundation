@@ -54,6 +54,8 @@ uv run python -m cxr_ml.eval.evaluate <run> [<run> ...]               # metrics.
 uv run scripts/prep_external.py && uv run python -m cxr_ml.eval.external <run>   # CheXpert valid
 uv run python -m cxr_ml.explain.localization <run> --dataset chexlocalize        # vs. masks
 uv run python -m cxr_ml.export.bundle <run> --version 1.0.0           # ONNX bundle (+parity check)
+scripts/analysis.sh                       # external val, localization, shortcut, galleries,
+                                          # val-only served-model choice, report (skips done steps)
 uv run python -m cxr_ml.export.bundle --placeholder                   # untrained dev bundle
 
 # tests / quality
@@ -66,6 +68,7 @@ cd web && E2E_BASE_URL=http://localhost:3000 npx playwright test     # needs API
 uv run uvicorn cxr_server.app:create_app --factory --port 8000       # API (CXR_BUNDLE_DIR)
 cd web && npm run dev                                                 # http://localhost:3000
 docker compose up --build                 # full stack; bundle from CXR_BUNDLE_HOST_DIR
+cd web && node scripts/record-demo.mjs    # docs/demo.gif from the running app (needs real bundle)
 uv run scripts/export_openapi.py && (cd web && npm run gen:api)       # after API schema changes
 ```
 
@@ -109,3 +112,9 @@ uv run scripts/export_openapi.py && (cd web && npm run gen:api)       # after AP
 - CheXlocalize masks are COCO RLE (column-major); `cxr_ml.data.rle` is a tested port, no pycocotools.
   Its `gradcam_maps_val/*.pkl` files are pickles from the authors' model: not needed, never load them.
 - Concurrent GPU jobs (MAE + supervised) share throughput; MAE ETA in logs reflects that.
+- ONNX export traces the model: shapes derived from tensor sizes become tensors. The ViT patch
+  grid comes from `patch_embed.grid_size`, not `sqrt(num_tokens)` (`tests/test_export.py`).
+- MAE snapshots embed provenance (incl. `TorchVersion`); `load_encoder` allowlists exactly that
+  type under `weights_only=True`.
+- Heatmaps are min-max scaled per finding in the API/app (relative location only); galleries
+  use one shared scale per figure so low-score images don't look "hot".
