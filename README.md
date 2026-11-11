@@ -132,6 +132,8 @@ finding is positive iff it was segmented). Then run `uv run scripts/prep_externa
 
 ## Data and licenses
 
+Code: [MIT](LICENSE). Datasets and the images derived from them keep their own licenses:
+
 NIH ChestX-ray14 (NIH Clinical Center; Wang et al., CVPR 2017) — demo samples are from its test
 split. Chest-drain labels: NEATX (Jiménez-Sánchez et al., CC BY-NC-SA, not redistributed here).
 CheXpert / CheXpert Plus and CheXlocalize (Stanford AIMI, Saporta et al., Nature Machine
