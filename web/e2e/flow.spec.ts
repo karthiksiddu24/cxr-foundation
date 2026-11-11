@@ -9,8 +9,17 @@ async function expectNoA11yViolations(page: Page) {
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
-  const serious = results.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? ""));
-  expect(serious, JSON.stringify(serious.map((v) => [v.id, v.nodes.map((n) => n.target)]), null, 1)).toEqual([]);
+  const serious = results.violations.filter((v) =>
+    ["serious", "critical"].includes(v.impact ?? ""),
+  );
+  expect(
+    serious,
+    JSON.stringify(
+      serious.map((v) => [v.id, v.nodes.map((n) => n.target)]),
+      null,
+      1,
+    ),
+  ).toEqual([]);
 }
 
 test("upload a PNG and inspect results", async ({ page }) => {
@@ -68,7 +77,10 @@ test("sample image flow and viewer keyboard shortcuts", async ({ page }) => {
   await expect(zoom).toContainText("100%");
 
   await page.keyboard.press("i");
-  await expect(page.getByRole("button", { name: "Invert" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Invert" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 
   await page.keyboard.press("?");
   await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();

@@ -301,8 +301,8 @@ export function Workspace({ result }: { result: PredictResponse }) {
               className="border-t px-3 py-1.5 text-[11px] text-muted-foreground"
             >
               {current.display_name} is below its threshold. Each map is scaled within its own
-              finding, so the colors show where this weak evidence is relatively strongest, not
-              that it is strong.
+              finding, so the colors show where this weak evidence is relatively strongest, not that
+              it is strong.
             </p>
           )}
         </div>

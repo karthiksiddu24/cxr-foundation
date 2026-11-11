@@ -3,3 +3,4 @@ node_modules
 src/lib/api/schema.d.ts
 playwright-report
 test-results
+src/content/results.json

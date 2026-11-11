@@ -51,7 +51,7 @@ jobs:
         with: { version: "${{ env.UV_VERSION }}", enable-cache: true }
       - run: uv sync --frozen --group dev
       # `data`-marked tests skip automatically when the real datasets are absent.
-      - run: uv run pytest packages/cxr_ml tests -q
+      - run: uv run pytest packages/cxr_ml -q
 
   api-contract:
     name: OpenAPI schema and TS types are up to date
