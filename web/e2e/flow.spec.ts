@@ -43,6 +43,14 @@ test("upload a PNG and inspect results", async ({ page }) => {
   await expect(page.getByText(`Heatmap:`)).toBeVisible();
   await expect(page.getByRole("img", { name: new RegExp(`heatmap for`) })).toBeVisible();
   expect(name).toBeTruthy();
+
+  // a below-threshold finding explains that its per-finding-scaled map is weak evidence
+  const last = panel.locator("[data-finding]").last();
+  await last.click();
+  const lastRow = panel.getByRole("listitem").last();
+  if ((await lastRow.getByText("Above threshold").count()) === 0) {
+    await expect(page.getByTestId("heatmap-low-score-note")).toBeVisible();
+  }
 });
 
 test("sample image flow and viewer keyboard shortcuts", async ({ page }) => {

@@ -211,17 +211,34 @@ def update_readme(le: dict[str, Any], best_base: str | None) -> None:
         lines.append("")
     if best_base and (m := metrics(best_base)):
         lines.append(
-            f"Best CNN baseline by validation score (`{best_base}`): test mean AUROC "
+            f"- Best CNN baseline by validation score (`{best_base}`): test mean AUROC "
             f"{fmt(m['test_auroc']['mean'])}."
         )
     sc = load(EV / str(best_base) / "shortcut_pneumothorax_drain.json") if best_base else None
     if sc:
         g = sc["difference"]
         lines.append(
-            f"Shortcut audit (`{best_base}`): pneumothorax AUROC is "
+            f"- Shortcut audit (`{best_base}`): pneumothorax AUROC is "
             f"{sc['auroc_with_drain']['point']:.3f} with a chest drain vs "
             f"{sc['auroc_without_drain']['point']:.3f} without "
             f"(gap {g['point']:+.3f}, 95% CI {g['ci_low']:+.3f} to {g['ci_high']:+.3f})."
+        )
+    ext = load(EV / str(best_base) / "external_chexpert_valid.json") if best_base else None
+    if ext:
+        n = sum(1 for v in ext["per_finding"].values() if v["auroc"] is not None)
+        lines.append(
+            f"- External validation (`{best_base}`, CheXpert validation set from Stanford, "
+            f"{ext['n_images']} frontal images, {n} scored findings): mean AUROC "
+            f"{fmt(ext['mean_auroc_exact_mappings'])}."
+        )
+    loc = load(EV / str(best_base) / "localization_chexlocalize_cam.json") if best_base else None
+    if loc:
+        o = loc["overall"]
+        lines.append(
+            f"- Heatmap localization (`{best_base}`, CheXlocalize radiologist segmentations): "
+            f"pointing game {o['pointing_game']:.3f} "
+            f"({o['pointing_game_ci'][0]:.3f}–{o['pointing_game_ci'][1]:.3f}) vs "
+            f"{o['center_baseline']:.3f} for always pointing at the image center."
         )
     if not lines:
         return
@@ -408,7 +425,12 @@ def main() -> None:
             "Pointing game: fraction of annotated findings where the heatmap's maximum falls inside "
             "the radiologist's box (NIH, VinDr) or segmentation (CHEXLOCALIZE: CheXpert validation "
             "images, an external hospital). A heatmap is only informative if it beats the "
-            "image-center and random-point baselines.\n"
+            "image-center and random-point baselines. The center baseline is high on "
+            "CHEXLOCALIZE because large, central Cardiomegaly masks are a quarter of its items. "
+            "Attention rollout is class-agnostic; for ImageNet-initialized ViTs its peak often sits "
+            "on background patches near the image corners (attention-sink tokens, see Darcet et "
+            "al. 2023, 'Vision Transformers Need Registers'), which is why it can score below the "
+            "random-point baseline.\n"
         )
         w(
             "| Run | Reference | Heatmap | n | Pointing game (95% CI) | Center baseline | Random baseline | Mean IoU |"

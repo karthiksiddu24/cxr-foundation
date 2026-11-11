@@ -295,6 +295,16 @@ export function Workspace({ result }: { result: PredictResponse }) {
               </span>
             </div>
           )}
+          {showHeatmap && usable && current && !current.flagged && (
+            <p
+              data-testid="heatmap-low-score-note"
+              className="border-t px-3 py-1.5 text-[11px] text-muted-foreground"
+            >
+              {current.display_name} is below its threshold. Each map is scaled within its own
+              finding, so the colors show where this weak evidence is relatively strongest, not
+              that it is strong.
+            </p>
+          )}
         </div>
       </div>
 

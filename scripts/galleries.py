@@ -39,10 +39,11 @@ def cams_for(model, imgs: np.ndarray, k: int) -> np.ndarray:  # type: ignore[no-
         up = F.interpolate(
             cams[:, k : k + 1].float(), size=imgs.shape[-2:], mode="bilinear", align_corners=False
         )
-    u = up[:, 0].cpu().numpy()
-    lo = u.reshape(len(u), -1).min(1)[:, None, None]
-    hi = u.reshape(len(u), -1).max(1)[:, None, None]
-    return (u - lo) / np.maximum(hi - lo, 1e-6)
+    # Positive evidence only (Grad-CAM convention: drop the bias, ReLU). Left unnormalized so
+    # grid() can put every panel of a figure on one shared scale: per-image min-max would make
+    # a near-zero-score image look as "hot" as a confident one.
+    bias = float(model.head.bias[k])
+    return np.maximum(up[:, 0].cpu().numpy() - bias, 0.0)
 
 
 def panel(ax, img: np.ndarray, cam: np.ndarray, title: str) -> None:  # type: ignore[no-untyped-def]
@@ -56,6 +57,9 @@ def grid(
     rows: list[tuple[str, list[tuple[np.ndarray, np.ndarray, str]]]], path: Path, title: str
 ) -> None:
     style.apply()
+    peak = max((float(cam.max()) for _, items in rows for _, cam, _ in items), default=0.0)
+    scale = 1.0 / peak if peak > 0 else 1.0
+    rows = [(label, [(img, cam * scale, t) for img, cam, t in items]) for label, items in rows]
     fig, axes = plt.subplots(len(rows), N, figsize=(2.2 * N, 2.4 * len(rows)), squeeze=False)
     for r, (label, items) in enumerate(rows):
         for c in range(N):
@@ -74,7 +78,12 @@ def grid(
             ha="right",
             fontsize=8,
         )
-    fig.suptitle(title, fontsize=10, x=0.01, ha="left")
+    fig.suptitle(
+        f"{title}  (heatmaps share one color scale within this figure)",
+        fontsize=10,
+        x=0.01,
+        ha="left",
+    )
     fig.tight_layout()
     fig.savefig(path, dpi=110)
     plt.close(fig)
