@@ -1,5 +1,7 @@
 # CXR-Foundation
 
+[![CI](https://github.com/karthiksiddu24/cxr-foundation/actions/workflows/ci.yml/badge.svg)](https://github.com/karthiksiddu24/cxr-foundation/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **A chest X-ray model pretrained without labels, evaluated like a clinical study, and served in a production-quality web app.**
 
 > ⚠️ Research demonstration only. Not a medical device. Not for clinical use.
