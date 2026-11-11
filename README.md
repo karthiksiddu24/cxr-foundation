@@ -7,7 +7,9 @@
 <!-- demo:start -->
 ![Demo: analyzing a chest X-ray, stepping through finding heatmaps, model card and methodology](docs/demo.gif)
 
-<sub>Recorded from the running app by `web/scripts/record-demo.mjs`; sample image from the NIH ChestX-ray14 test set.</sub>
+**▶ [Full walk-through video (39 s, captioned)](docs/demo.mp4)**: upload, heatmaps, viewer tools,
+model card, results. <sub>Recorded from the Dockerized app by `web/scripts/record-demo.mjs`;
+sample image from the NIH ChestX-ray14 test set.</sub>
 <!-- demo:end -->
 
 ## The problem
@@ -75,14 +77,15 @@ uv run scripts/make_test_bundle.py models/current                   # tiny untra
 docker compose up --build            # -> http://localhost:3000   (GPU: add -f docker-compose.gpu.yml)
 ```
 
-Reproduce the research (single GPU; data paths in `.env.example`):
+Reproduce the research (single GPU; data paths in `.env.example`; step-by-step guide with
+measured run times in [docs/REPRODUCE.md](docs/REPRODUCE.md)):
 
 ```bash
 uv sync
 uv run scripts/download_nih.py --out /data/cxr/raw/nih && uv run scripts/prep_nih.py
 uv run python -m cxr_ml.train.mae --config configs/mae/vit_base.yaml        # ~13 h on one L40S
 scripts/pipeline.sh                                                         # baselines + fine-tuning grid
-uv run scripts/report.py                                                    # RESULTS.md + figures
+scripts/analysis.sh                     # CheXpert, localization, shortcut audit, served model, report
 ```
 
 CheXpert and VinDr-CXR require license agreements and are not downloaded automatically;
@@ -90,6 +93,17 @@ CheXpert and VinDr-CXR require license agreements and are not downloaded automat
 come from the CheXpert Plus release and their labels from CheXlocalize's radiologist
 segmentations (CheXlocalize segmented every finding positive in the CheXpert ground truth, so a
 finding is positive iff it was segmented). Then run `uv run scripts/prep_external.py`.
+
+## Documentation
+
+| Doc | What's in it |
+|---|---|
+| [RESULTS.md](RESULTS.md) | Every result with CIs: baselines, MAE, label efficiency, CheXpert, localization, shortcut audit, galleries |
+| [docs/MODEL_CARD.md](docs/MODEL_CARD.md) | The served model: intended use, per-finding metrics and thresholds, external validation, limitations |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, train/serve contract, request flow, testing |
+| [docs/REPRODUCE.md](docs/REPRODUCE.md) | Data placement, every command, measured run times |
+| [docs/API.md](docs/API.md) | Endpoints, response format, errors, configuration |
+| [docs/data_report.md](docs/data_report.md) | Dataset statistics and split checks |
 
 ## Engineering
 

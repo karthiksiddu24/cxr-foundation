@@ -38,4 +38,5 @@ for r in $(printf '%s\n' "$BEST_BASE" "$SERVED" | sort -u); do
   ls docs/figures/galleries/"$r"__* > /dev/null 2>&1 || uv run --no-sync scripts/galleries.py "$r"
 done
 uv run --no-sync scripts/report.py
+uv run --no-sync scripts/model_card.py
 echo "served: $SERVED   best baseline: $BEST_BASE"
